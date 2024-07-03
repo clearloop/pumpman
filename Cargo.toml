@@ -1,0 +1,23 @@
+[package]
+name = "replika"
+version = "0.0.0"
+edition = "2021"
+
+[dependencies]
+actix-web = "4.8.0"
+anchor-lang = "0.30.1"
+anyhow = "1.0.86"
+async-graphql = "7.0.6"
+clap = { version = "4.5.8", features = ["derive"] }
+diesel = { version = "2.2.1", features = ["postgres"] }
+futures-util = "0.3.30"
+mpl-token-metadata = "4.1.2"
+redis = "0.25.4"
+serde = "1.0.203"
+solana-client = "2.0.1"
+solana-sdk = "2.0.1"
+solana-transaction-status = "2.0.1"
+teloxide = "0.12.2"
+tokio = { version = "1.38.0", features = ["full"] }
+toml = "0.8.14"
+url = "2.5.2"
