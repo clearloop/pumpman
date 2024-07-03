@@ -5,11 +5,18 @@ use url::Url;
 #[derive(Serialize, Deserialize)]
 pub struct Config {
     /// RPC endpoint of solana
-    cluster: Url,
-    /// Postgres URL
-    postgres: Url,
+    pub cluster: Cluster,
     /// Redis url
-    redis: Url,
-    /// Sync from slot
-    from: u64,
+    pub redis: Url,
+    /// Telegram bot token
+    pub telegram: String,
+}
+
+/// Solana cluster
+#[derive(Serialize, Deserialize)]
+pub struct Cluster {
+    /// http rpc url
+    pub http: Url,
+    /// websocket rpc url
+    pub ws: Url,
 }

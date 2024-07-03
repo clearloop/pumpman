@@ -1,6 +1,6 @@
 //! Replika service
 
-pub use {cli::Opt, client::Client};
+pub use {cli::Opt, client::Client, config::Config, context::Redis};
 
 mod cli;
 mod client;

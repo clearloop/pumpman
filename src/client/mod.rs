@@ -1,5 +1,6 @@
 //! Solana programs
 
+use crate::{config::Cluster, context::Telegram, Redis};
 use anyhow::Result;
 use futures_util::StreamExt;
 use mpl_token_metadata::accounts::Metadata;
@@ -19,13 +20,20 @@ pub struct Client {
     rpc: RpcClient,
     /// Pubsub client for latest events
     pubsub: PubsubClient,
+    /// Redis client
+    redis: Redis,
+    /// Telegram handler
+    telegram: Telegram,
 }
 
 impl Client {
-    pub async fn new(cluster: &str) -> Result<Self> {
+    /// Create new solana client
+    pub async fn new(cluster: &Cluster, redis: Redis, telegram: Telegram) -> Result<Self> {
         Ok(Self {
-            rpc: RpcClient::new(cluster.replace("ws", "https").into()),
-            pubsub: PubsubClient::new(cluster).await?,
+            rpc: RpcClient::new(cluster.http.to_string()),
+            pubsub: PubsubClient::new(&cluster.ws.to_string()).await?,
+            redis,
+            telegram,
         })
     }
 
