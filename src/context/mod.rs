@@ -1,3 +1,5 @@
-mod db;
+//! Global context
 
-pub use db::Db;
+mod postgres;
+mod redis;
+mod telegram;
