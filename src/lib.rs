@@ -6,4 +6,5 @@ mod cli;
 mod client;
 mod config;
 mod context;
+mod sol;
 mod utils;

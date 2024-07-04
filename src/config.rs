@@ -9,7 +9,7 @@ pub struct Config {
     /// Redis url
     pub redis: Url,
     /// Telegram bot token
-    pub telegram: String,
+    pub telegram: Telegram,
 }
 
 /// Solana cluster
@@ -19,4 +19,13 @@ pub struct Cluster {
     pub http: Url,
     /// websocket rpc url
     pub ws: Url,
+}
+
+/// Telegram config
+#[derive(Serialize, Deserialize)]
+pub struct Telegram {
+    /// Telegram token
+    pub token: String,
+    /// Subscription chat id
+    pub subscription: String,
 }

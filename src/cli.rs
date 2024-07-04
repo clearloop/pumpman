@@ -10,8 +10,13 @@ use std::{fs, path::PathBuf};
 pub enum Command {
     /// Prints transaction from signature
     Sig { signature: String },
-    /// Start subscription
-    Sub,
+    /// Start the service
+    Start,
+    /// Subscribe message to telegram channel
+    Subscribe {
+        /// Message to be subscribed to the main channel
+        message: String,
+    },
 }
 
 /// Replika command line interfaces
@@ -34,12 +39,13 @@ impl Opt {
     pub async fn run(self) -> Result<()> {
         let config: Config = toml::from_str(&fs::read_to_string(&self.config)?)?;
         let redis = Redis::new(config.redis)?;
-        let telegram = Telegram::new(&config.telegram);
-        let client = Client::new(&config.cluster, redis, telegram).await?;
+        let telegram = Telegram::new(&config.telegram, redis.clone());
+        let client = Client::new(&config.cluster, redis, telegram.clone()).await?;
 
-        match &self.command {
+        match self.command {
             Command::Sig { signature } => client.sig(&signature).await,
-            Command::Sub => client.subscribe().await,
+            Command::Start => client.subscribe().await,
+            Command::Subscribe { message } => telegram.subscribe(message).await,
         }
     }
 }

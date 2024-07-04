@@ -1,9 +1,10 @@
 //! Solana programs
 
-use crate::{config::Cluster, context::Telegram, Redis};
+use crate::{config::Cluster, context::Telegram, sol, Redis};
 use anyhow::Result;
 use futures_util::StreamExt;
 use mpl_token_metadata::accounts::Metadata;
+use redis::Commands;
 use solana_client::{
     nonblocking::{pubsub_client::PubsubClient, rpc_client::RpcClient},
     rpc_config::{RpcTransactionConfig, RpcTransactionLogsConfig, RpcTransactionLogsFilter},
@@ -11,8 +12,6 @@ use solana_client::{
 use solana_sdk::{commitment_config::CommitmentConfig, pubkey::Pubkey, signature::Signature};
 use solana_transaction_status::UiTransactionEncoding;
 use std::str::FromStr;
-
-mod sol;
 
 /// Replika client
 pub struct Client {
@@ -49,6 +48,7 @@ impl Client {
             )
             .await?;
 
+        let mut redis = self.redis.con().await?;
         tracing::info!("subscribe: {}", sol::pump::ID.to_string());
         while let Some(resp) = sub.0.next().await {
             if resp.value.err.is_some() {
@@ -56,7 +56,13 @@ impl Client {
             }
 
             if let Some(event) = sol::parse::<sol::pump::events::TradeEvent>(resp.value.logs) {
-                println!("{:#?}", event);
+                let mint = event.mint.to_string();
+                let exists: bool = redis.exists(&mint)?;
+                if !exists {
+                    let _: String = redis.set(&mint, self.metadata(&mint).await?.symbol)?;
+                }
+
+                self.telegram.trade(event).await?;
             }
         }
 
@@ -64,12 +70,12 @@ impl Client {
     }
 
     /// Get token metadata from address
-    pub async fn metadata(&self, addr: Pubkey) -> Result<Metadata> {
+    pub async fn metadata(&self, mint: &str) -> Result<Metadata> {
         let acc = Pubkey::find_program_address(
             &[
                 b"metadata",
                 &mpl_token_metadata::ID.to_bytes(),
-                &addr.to_bytes(),
+                &Pubkey::from_str(mint)?.to_bytes(),
             ],
             &mpl_token_metadata::ID.to_bytes().into(),
         );
