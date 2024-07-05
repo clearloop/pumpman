@@ -6,6 +6,8 @@ use url::Url;
 pub struct Config {
     /// RPC endpoint of solana
     pub cluster: Cluster,
+    /// Postgres url
+    pub postgres: Url,
     /// Redis url
     pub redis: Url,
     /// Telegram bot token
@@ -26,6 +28,8 @@ pub struct Cluster {
 pub struct Telegram {
     /// Telegram token
     pub token: String,
+    /// Telegram token of the takeover bot
+    pub takeover: String,
     /// Subscription chat id
     pub subscription: String,
 }

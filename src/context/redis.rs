@@ -13,8 +13,8 @@ pub struct Redis(Arc<Mutex<Client>>);
 
 impl Redis {
     /// Redis url
-    pub fn new(uri: Url) -> Result<Self> {
-        Ok(Self(Arc::new(Mutex::new(Client::open(uri)?))))
+    pub fn new(uri: &Url) -> Result<Self> {
+        Ok(Self(Arc::new(Mutex::new(Client::open(uri.to_string())?))))
     }
 
     /// Get redis connection

@@ -1,6 +1,10 @@
 //! CLI operations
 
-use crate::{context::Telegram, Client, Config, Redis};
+use crate::{
+    context::{Db, Redis, Telegram},
+    telegram::TakeoverBot,
+    Client, Config,
+};
 use anyhow::Result;
 use clap::{Parser, Subcommand};
 use std::{fs, path::PathBuf};
@@ -12,6 +16,8 @@ pub enum Command {
     Sig { signature: String },
     /// Start the service
     Start,
+    /// Start the takeover service
+    Takeover,
     /// Subscribe message to telegram channel
     Subscribe {
         /// Message to be subscribed to the main channel
@@ -28,7 +34,6 @@ pub struct Opt {
     /// Replika sub commands
     #[clap(subcommand)]
     command: Command,
-
     /// The verbosity level.
     #[clap(short, long, action = clap::ArgAction::Count)]
     pub verbose: u8,
@@ -38,13 +43,17 @@ impl Opt {
     /// Run commands
     pub async fn run(self) -> Result<()> {
         let config: Config = toml::from_str(&fs::read_to_string(&self.config)?)?;
-        let redis = Redis::new(config.redis)?;
-        let telegram = Telegram::new(&config.telegram, redis.clone());
-        let client = Client::new(&config.cluster, redis, telegram.clone()).await?;
+        let db = Db::new(&config.postgres, &config.redis)?;
+        let telegram = Telegram::new(&config.telegram, db.redis.clone());
+        let client = Client::new(&config.cluster, db.redis.clone(), telegram.clone()).await?;
 
         match self.command {
             Command::Sig { signature } => client.sig(&signature).await,
             Command::Start => client.subscribe().await,
+            Command::Takeover => {
+                let bot = TakeoverBot::new(&config.telegram.takeover, db);
+                bot.start().await
+            }
             Command::Subscribe { message } => telegram.subscribe(message).await,
         }
     }

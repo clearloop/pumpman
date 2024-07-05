@@ -1,6 +1,10 @@
 //! Solana programs
 
-use crate::{config::Cluster, context::Telegram, sol, Redis};
+use crate::{
+    config::Cluster,
+    context::{Redis, Telegram},
+    sol,
+};
 use anyhow::Result;
 use futures_util::StreamExt;
 use mpl_token_metadata::accounts::Metadata;
