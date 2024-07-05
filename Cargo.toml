@@ -22,7 +22,7 @@ solana-account-decoder = "2.0.1"
 solana-client = { version = "2.0.1", default-features = false }
 solana-sdk = { version = "2.0.1", default-features = false }
 solana-transaction-status = "2.0.1"
-teloxide = { version = "0.12.2", features = ["redis-storage", "cache-me", "throttle", "macros" ]}
+teloxide = { version = "0.12.2", features = ["redis-storage", "cache-me", "throttle", "macros", "bincode-serializer" ] }
 tokio = { version = "1.38.0", features = ["full"] }
 toml = "0.8.14"
 tracing = "0.1.40"

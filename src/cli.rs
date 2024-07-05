@@ -51,7 +51,11 @@ impl Opt {
             Command::Sig { signature } => client.sig(&signature).await,
             Command::Start => client.subscribe().await,
             Command::Takeover => {
-                let bot = TakeoverBot::new(&config.telegram.takeover, db);
+                let bot = TakeoverBot::new(
+                    &config.telegram.takeover,
+                    db,
+                    format!("{}/15", config.redis),
+                );
                 bot.start().await
             }
             Command::Subscribe { message } => telegram.subscribe(message).await,
