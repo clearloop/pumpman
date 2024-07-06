@@ -1,10 +1,11 @@
 //! Redis instance
 
-use std::sync::Arc;
-
+use crate::utils::DAY;
 use anyhow::Result;
 use async_lock::Mutex;
-use redis::{Client, Connection};
+use redis::{Client, Commands, Connection};
+use serde::{de::DeserializeOwned, Serialize};
+use std::sync::Arc;
 use url::Url;
 
 /// Redis instance
@@ -21,4 +22,25 @@ impl Redis {
     pub async fn con(&self) -> Result<Connection> {
         self.0.lock().await.get_connection().map_err(Into::into)
     }
+}
+
+/// Set value to redis
+pub fn set<T: Serialize>(
+    key: &str,
+    value: &T,
+    exp: impl Into<Option<u64>>,
+    con: &mut Connection,
+) -> Result<()> {
+    let _ = con.set_ex(
+        key,
+        serde_json::to_string(value)?,
+        exp.into().unwrap_or(DAY),
+    )?;
+    Ok(())
+}
+
+/// Get parsed value from redis
+pub fn get<T: DeserializeOwned>(key: &str, con: &mut Connection) -> Result<T> {
+    let s: String = con.get(key)?;
+    serde_json::from_str(&s).map_err(Into::into)
 }

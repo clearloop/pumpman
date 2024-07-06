@@ -29,10 +29,12 @@ pub struct Takeover {
     /// Sequence id
     #[diesel(deserialize_as = i64)]
     pub id: Option<i64>,
-    /// The address of the coin to be taken over
-    pub address: String,
     /// Banner of the cto
     pub banner: Option<String>,
+    /// The address of the token to be taken over
+    pub mint: String,
+    /// Telegram user id of this takeover
+    pub proposer: String,
     /// Telegram link
     pub telegram: String,
     /// Twitter link
@@ -42,9 +44,10 @@ pub struct Takeover {
 }
 
 impl Takeover {
-    pub fn new(address: String) -> Self {
+    /// New community takeover
+    pub fn new(mint: String) -> Self {
         Self {
-            address,
+            mint,
             ..Default::default()
         }
     }

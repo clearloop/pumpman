@@ -9,15 +9,15 @@ diesel::table! {
         twitter -> Nullable<Text>,
         website -> Nullable<Text>,
         created_on -> Nullable<Text>,
-        dex -> Nullable<Text>
     }
 }
 
 diesel::table! {
     takeovers (id) {
         id -> Int8,
-        address -> Text,
         banner -> Nullable<Text>,
+        mint -> Text,
+        proposer -> Text,
         telegram -> Text,
         twitter -> Nullable<Text>,
         website -> Nullable<Text>,

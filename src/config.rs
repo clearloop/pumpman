@@ -1,4 +1,6 @@
+use anyhow::{anyhow, Result};
 use serde::{Deserialize, Serialize};
+use std::{fs, path::Path};
 use url::Url;
 
 /// Replika service config
@@ -14,6 +16,16 @@ pub struct Config {
     pub telegram: Telegram,
 }
 
+impl Config {
+    /// Load config from path
+    pub fn load(path: impl AsRef<Path>) -> Result<Self> {
+        let config = fs::read_to_string(path.as_ref())
+            .map_err(|e| anyhow!("Could not find config.toml: {e}"))?;
+
+        toml::from_str(&config).map_err(Into::into)
+    }
+}
+
 /// Solana cluster
 #[derive(Serialize, Deserialize)]
 pub struct Cluster {
@@ -26,10 +38,8 @@ pub struct Cluster {
 /// Telegram config
 #[derive(Serialize, Deserialize)]
 pub struct Telegram {
-    /// Telegram token
-    pub token: String,
     /// Telegram token of the takeover bot
     pub takeover: String,
     /// Subscription chat id
-    pub subscription: String,
+    pub takeoveralerts: String,
 }

@@ -1,7 +1,7 @@
 //! CLI operations
 
 use crate::{context::Context, telegram::TakeoverBot, Config};
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use clap::{Parser, Subcommand};
 use std::{fs, path::PathBuf};
 
@@ -33,9 +33,13 @@ pub struct Opt {
 impl Opt {
     /// Run commands
     pub async fn run(self) -> Result<()> {
-        let config: Config = toml::from_str(&fs::read_to_string(&self.config)?)?;
+        let config = Config::load(self.config)?;
         let context = Context::new(&config)?;
 
+        // pre-process
+        context.init().await?;
+
+        // match commands
         match self.command {
             Command::Sig { signature } => context.client.sig(&signature).await,
             Command::Metadata { mint } => {
@@ -49,7 +53,14 @@ impl Opt {
                     context,
                     format!("{}/15", config.redis),
                 );
-                bot.start().await
+
+                let mut result = bot.start().await;
+                while let Err(e) = result {
+                    tracing::error!("takeover bot broken: {e}");
+                    result = bot.start().await;
+                }
+
+                Ok(())
             }
         }
     }

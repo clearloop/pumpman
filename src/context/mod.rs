@@ -1,20 +1,19 @@
 //! Global context
 
-use crate::{model::Coin, schema::coins, Config};
-
 use self::{client::Client, postgres::Conn};
+use crate::{model::Coin, schema::coins, Config};
 use ::redis::{Commands, Connection};
 use anyhow::Result;
 use diesel::QueryDsl;
 use diesel::*;
 use mpl_token_metadata::accounts::Metadata;
 use url::Url;
-pub use {postgres::Postgres, redis::Redis, telegram::Telegram};
+pub use {postgres::Postgres, redis::Redis};
 
 mod client;
 mod postgres;
-mod redis;
-mod telegram;
+pub mod redis;
+// mod telegram;
 
 /// Database interface
 #[derive(Clone)]
@@ -37,6 +36,11 @@ impl Context {
         })
     }
 
+    /// Init context
+    pub async fn init(&self) -> Result<()> {
+        self.postgres.init().await
+    }
+
     /// Postgres connection
     pub async fn postgres(&self) -> Result<Conn> {
         self.postgres.conn().await
@@ -45,27 +49,5 @@ impl Context {
     /// Redis connection
     pub async fn redis(&self) -> Result<Connection> {
         self.redis.con().await.map_err(Into::into)
-    }
-
-    /// Get token metadata
-    pub async fn coin(&self, mint: &str) -> Result<Coin> {
-        let postgres = &mut self.postgres().await?;
-
-        let coin = coins::table
-            .filter(coins::mint.eq(mint))
-            .first::<Coin>(postgres)
-            .optional();
-
-        // let mbmeta = if let Some(meta) = redis
-        //     .get(mint)
-        //     .ok()
-        //     .and_then(|s: String| serde_json::from_str(&s).ok())
-        // {
-        //     return Ok(meta);
-        // };
-        //
-        // self.client.metadata(mint).await?;
-        //
-        todo!()
     }
 }

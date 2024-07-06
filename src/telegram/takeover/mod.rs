@@ -2,10 +2,11 @@
 
 use crate::{
     context::{Context, Postgres, Redis},
-    model::Takeover,
+    model::{Coin, Takeover},
     schema::takeovers,
+    telegram,
 };
-use anyhow::{anyhow, Result};
+use anyhow::anyhow;
 use diesel::RunQueryDsl;
 use serde::{Deserialize, Serialize};
 use solana_sdk::pubkey::Pubkey;
@@ -20,14 +21,14 @@ use teloxide::{
     prelude::*,
     types::{
         BotCommand, InlineKeyboardButton, InlineKeyboardButtonKind, InlineKeyboardMarkup,
-        MenuButton, ParseMode, ReplyMarkup, WebAppInfo,
+        KeyboardButton, KeyboardMarkup, MenuButton, ParseMode, ReplyMarkup, WebAppInfo,
     },
     utils::command::{BotCommands, CommandDescriptions},
 };
 
 type TakeoverDialogue = Dialogue<State, ErasedStorage<State>>;
 type TakeoverStorage = Arc<ErasedStorage<State>>;
-type HandlerResult = Result<(), Box<dyn std::error::Error + Send + Sync>>;
+type Result<T> = core::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
 
 #[derive(Clone, Default, Serialize, Deserialize)]
 pub enum State {
@@ -60,17 +61,12 @@ impl TakeoverBot {
     }
 
     /// Start the take over bot
-    pub async fn start(&self) -> Result<()> {
+    pub async fn start(&self) -> anyhow::Result<()> {
         tracing::info!("Starting the takeover bot");
 
         let cache: TakeoverStorage = RedisStorage::open(self.redis.clone(), Json).await?.erase();
         let command = teloxide::filter_command::<Command, _>()
-            .branch(
-                case![State::Start]
-                    .branch(case![Command::Help].endpoint(help))
-                    .branch(case![Command::Takeover].endpoint(cto))
-                    .branch(case![Command::Ctos].endpoint(cto)),
-            )
+            .branch(case![State::Start].branch(case![Command::Takeover].endpoint(takeover)))
             .branch(case![Command::Start].endpoint(start))
             .branch(case![Command::Cancel].endpoint(cancel));
 
@@ -80,7 +76,13 @@ impl TakeoverBot {
             .branch(case![State::ReceiveCtoAddress(takeover)].endpoint(receive_cto_address))
             .branch(dptree::endpoint(invalid_state));
 
-        let schema = dialogue::enter::<Update, ErasedStorage<State>, State, _>().branch(message);
+        let callback =
+            Update::filter_callback_query().branch(case![State::Start].endpoint(callback_takeover));
+
+        let schema = dialogue::enter::<Update, ErasedStorage<State>, State, _>()
+            .branch(message)
+            .branch(callback);
+
         self.bot
             .set_chat_menu_button()
             .menu_button(MenuButton::WebApp {
@@ -107,14 +109,38 @@ impl TakeoverBot {
     }
 }
 
-async fn start(bot: Bot, dialogue: TakeoverDialogue, msg: Message) -> HandlerResult {
+async fn start(bot: Bot, dialogue: TakeoverDialogue, msg: Message) -> Result<()> {
     dialogue.exit().await?;
-    bot.send_message(msg.chat.id, Command::descriptions().to_string())
+    if !msg.chat.id.is_user() {
+        bot.send_message(
+            msg.chat.id,
+            r#"
+Building better CTOs, feedbacks and ideas are welcome! @takeoverfyi
+
+Only support private chats atm )) 
+"#,
+        )
         .await?;
+        return Ok(());
+    }
+
+    bot.send_message(
+        msg.chat.id,
+        r#"
+Building better CTOs, feedbacks and ideas are welcome! @takeoverfyi 
+"#,
+    )
+    .reply_markup(menu()?)
+    .await?;
     Ok(())
 }
 
-async fn cto(bot: Bot, dialogue: TakeoverDialogue, msg: Message) -> HandlerResult {
+async fn callback_takeover(bot: Bot, dialogue: TakeoverDialogue, q: CallbackQuery) -> Result<()> {
+    let Some(msg) = q.message else { return Ok(()) };
+    takeover(bot, dialogue, msg).await
+}
+
+async fn takeover(bot: Bot, dialogue: TakeoverDialogue, msg: Message) -> Result<()> {
     bot.send_message(
         msg.chat.id,
         "Let's start! Which token your community are about to take over?",
@@ -130,7 +156,7 @@ async fn receive_cto(
     context: Context,
     dialogue: TakeoverDialogue,
     msg: Message,
-) -> HandlerResult {
+) -> Result<()> {
     let mint = msg.text().unwrap_or_default().to_string();
     if Pubkey::from_str(&mint).is_err() {
         bot.send_message(msg.chat.id, "Invalid solana token address.")
@@ -147,9 +173,7 @@ async fn receive_cto(
         return Ok(());
     }
 
-    let Ok(coin) = context
-        .client
-        .coin(&mint)
+    let Ok(coin) = Coin::get(&mint, &context)
         .await
         .map_err(|e| tracing::error!("{e}"))
     else {
@@ -158,34 +182,37 @@ async fn receive_cto(
             r#"
 Failed to get token metadata, re-input the token address to retry.
 
-/cancel - cancel the current operation
-/help - See the usage
-
 If you believe this is a bug, please contact our dev @takeoverfyi
 "#,
         );
         return Ok(());
     };
 
+    let redis = &mut context.redis().await?;
     bot.send_message(
         msg.chat.id,
         format!(
             r#"
 ${} \- {} 
-
 ```copy
 {}
 ```
-
-Almost done\! Please enter the telegram group handle of your community\.
-
-for example @takeoverfyi
 "#,
             coin.symbol, coin.name, coin.mint,
         ),
     )
     .parse_mode(ParseMode::MarkdownV2)
-    .reply_markup(coin.keyboards()?)
+    .reply_markup(coin.keyboards(redis).await?)
+    .await?;
+
+    bot.send_message(
+        msg.chat.id,
+        r#"
+Almost done! Please enter the telegram group handle of your community.
+    
+for example: @takeoverfyi
+"#,
+    )
     .await?;
 
     dialogue
@@ -198,37 +225,33 @@ async fn receive_cto_address(
     bot: Bot,
     context: Context,
     dialogue: TakeoverDialogue,
-    takeover: Takeover,
+    mut takeover: Takeover,
     msg: Message,
-) -> HandlerResult {
-    let mut link = msg.text().unwrap_or_default().trim().to_string();
-    link.retain(|c| !c.is_whitespace());
-
-    if !link.starts_with("@") {
-        bot.send_message(msg.chat.id, "Invalid telegram group link.")
-            .reply_markup(ReplyMarkup::InlineKeyboard(InlineKeyboardMarkup {
-                inline_keyboard: vec![vec![InlineKeyboardButton {
-                    text: "see exist ctos".to_string(),
-                    kind: InlineKeyboardButtonKind::WebApp(WebAppInfo {
-                        url: "https://takeover.fyi".parse()?,
-                    }),
-                }]],
-            }))
+) -> Result<()> {
+    let handle = msg.text().unwrap_or_default().trim().to_string();
+    if !handle.starts_with("@") || handle.contains(|w: char| w.is_ascii_whitespace()) {
+        bot.send_message(msg.chat.id, "Invalid telegram group handle.")
             .await?;
         return Ok(());
     }
+
+    takeover.telegram = handle;
+    takeover.proposer = telegram::uid(&msg)
+        .ok_or(anyhow!("Takeover action running in group"))?
+        .to_string();
 
     diesel::insert_into(takeovers::table)
         .values(takeover)
         .execute(&mut context.postgres().await?)?;
 
+    // TODO: forward a message to community
     bot.send_message(
         msg.chat.id,
         format!("All set up! Your community page is https://symbol.takeover.fyi"),
     )
     .reply_markup(ReplyMarkup::InlineKeyboard(InlineKeyboardMarkup {
         inline_keyboard: vec![vec![InlineKeyboardButton {
-            text: "Enter my community".to_string(),
+            text: "Share to my community!".to_string(),
             kind: InlineKeyboardButtonKind::WebApp(WebAppInfo {
                 url: "https://symbol.takeover.fyi".parse()?,
             }),
@@ -239,29 +262,44 @@ async fn receive_cto_address(
     Ok(())
 }
 
-async fn cancel(bot: Bot, dialogue: TakeoverDialogue, msg: Message) -> HandlerResult {
+async fn cancel(bot: Bot, dialogue: TakeoverDialogue, msg: Message) -> Result<()> {
     bot.send_message(
         msg.chat.id,
-        "Cancelling the dialogue. Type /help to see the usage.",
+        "Cancelling the dialogue. Type /start to see the menu.",
     )
     .await?;
     dialogue.exit().await?;
     Ok(())
 }
 
-async fn help(bot: Bot, msg: Message) -> HandlerResult {
-    bot.send_message(msg.chat.id, Command::descriptions().to_string())
-        .await?;
-    Ok(())
-}
-
-async fn invalid_state(bot: Bot, msg: Message) -> HandlerResult {
+async fn invalid_state(bot: Bot, msg: Message) -> Result<()> {
     bot.send_message(
         msg.chat.id,
-        "Unable to handle the message. Type /help to see the usage.",
+        "Unable to handle the message. Type /start to see the usage.",
     )
     .await?;
     Ok(())
+}
+
+fn menu() -> Result<ReplyMarkup> {
+    let keyboard = vec![
+        vec![InlineKeyboardButton::callback(
+            "Claim Community Takeover",
+            "/takeover",
+        )],
+        vec![InlineKeyboardButton::url(
+            "Community Takeover Progress",
+            "https://t.me/takeoverfyi".parse()?,
+        )],
+        vec![
+            InlineKeyboardButton::url("Alerts", "https://t.me/takeoveralerts".parse()?),
+            InlineKeyboardButton::url("Support", "https://t.me/takeoverfyi".parse()?),
+        ],
+    ];
+
+    Ok(ReplyMarkup::InlineKeyboard(InlineKeyboardMarkup::new(
+        keyboard,
+    )))
 }
 
 #[derive(BotCommands, Clone)]
@@ -270,19 +308,13 @@ async fn invalid_state(bot: Bot, msg: Message) -> HandlerResult {
     description = "These commands are supported:"
 )]
 enum Command {
-    /// Display this text.
-    #[command(description = "Display the help message.")]
-    Help,
     /// Start bot use.
     #[command(description = "Start bot use.")]
     Start,
     /// Cancel the current operation.
     #[command(description = "Cancel the current operation.")]
     Cancel,
-    #[command(description = "Register a community take over.")]
-    /// Register a community take over
+    #[command(description = "Claim a community take over.")]
+    /// Claim a community take over
     Takeover,
-    /// Get ctos of a token
-    #[command(description = "Get ctos of a solana token.")]
-    Ctos,
 }

@@ -1,6 +1,7 @@
 //! Basic coin information
 
-use crate::schema::coins;
+use crate::{context::Context, redis, schema::coins, utils::Dex};
+use ::redis::Connection;
 use anyhow::Result;
 use async_graphql::SimpleObject;
 use diesel::prelude::*;
@@ -48,11 +49,26 @@ pub struct Coin {
     pub website: Option<String>,
     /// Where this coin created on
     pub created_on: Option<String>,
-    /// If this coin is on dex
-    pub dex: Option<String>,
 }
 
 impl Coin {
+    /// Get self from context
+    pub async fn get(mint: &str, context: &Context) -> Result<Self> {
+        let conn = &mut context.postgres().await?;
+        if let Ok(coin) = coins::table
+            .filter(coins::mint.eq(mint))
+            .first::<Self>(conn)
+        {
+            return Ok(coin);
+        }
+
+        let coin = context.client.coin(mint).await?;
+        diesel::insert_into(coins::table)
+            .values(&coin)
+            .execute(conn)?;
+        Ok(coin)
+    }
+
     /// Append json to metadata
     pub fn append(&mut self, json: Value) {
         let mbstr = |field: &str| {
@@ -70,23 +86,22 @@ impl Coin {
     }
 
     /// Get telegram keyboards for this coin
-    pub fn keyboards(&self) -> Result<ReplyMarkup> {
+    pub async fn keyboards(&self, con: &mut Connection) -> Result<ReplyMarkup> {
         let mut keyboards = vec![];
         if let Some(true) = self.created_on.as_ref().map(|p| p.contains("pump.fun")) {
-            keyboards.push(InlineKeyboardButton {
-                text: "View on pump.fun".to_string(),
-                kind: InlineKeyboardButtonKind::Url(
-                    format!("https://pump.fun/{}", self.mint).parse()?,
-                ),
-            })
+            keyboards.push(InlineKeyboardButton::url(
+                "View on pump.fun",
+                format!("https://pump.fun/{}", self.mint).parse()?,
+            ));
         }
 
-        if let Some(dex) = &self.dex {
-            keyboards.push(InlineKeyboardButton {
-                text: "View on dexscreener".to_string(),
-                kind: InlineKeyboardButtonKind::Url(dex.parse()?),
-            })
+        if let Some(dex) = Dex::dexscreener(&self.mint, con).await {
+            keyboards.push(InlineKeyboardButton::url(
+                "View on dexscreener",
+                dex.parse()?,
+            ));
         }
+
         Ok(ReplyMarkup::InlineKeyboard(InlineKeyboardMarkup {
             inline_keyboard: vec![keyboards],
         }))

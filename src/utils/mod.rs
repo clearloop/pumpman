@@ -1,3 +1,6 @@
+pub use dex::Dex;
+
+mod dex;
 pub mod base64 {
     use anyhow::Result;
     use base64::{engine::general_purpose::STANDARD, Engine as _};
@@ -7,3 +10,6 @@ pub mod base64 {
         STANDARD.decode(encoded).map_err(Into::into)
     }
 }
+
+// Day in seconds
+pub const DAY: u64 = 86400;
