@@ -1,5 +1,9 @@
 use crate::utils::base64;
 use anchor_lang::AnchorDeserialize;
+use mpl_token_metadata::accounts::Metadata as MplMetadata;
+use serde::{Deserialize, Serialize};
+use serde_json::Value;
+use solana_sdk::pubkey::Pubkey;
 
 // pub mod raydium;
 pub mod pump;
@@ -15,11 +19,4 @@ pub fn parse<T: AnchorDeserialize>(logs: Vec<String>) -> Option<T> {
         .replace(LOG_PREFIX, "");
 
     T::deserialize(&mut &base64::decode(&event).ok()?[DISCRIMINATOR_SIZE..]).ok()
-}
-
-#[test]
-fn decode() {
-    let r =  parse::<pump::events::TradeEvent>(vec!["Program data: vdt/007mYe66y1JXTQoKfWyG6mzuJGZAfqL9HXqV8Fr9AWNJXwt7X65EsHoAAAAA/4B9NP48AAAArPC89fcKqc8R7CBTT1nPPFRlogbDLAYKR+A+jMbLD3ODwYVmAAAAAE/RMhUHAAAAKoUjkGbCAwBPJQ8ZAAAAACrtEETVwwIA".to_string()]);
-
-    println!("{:#?}", r);
 }

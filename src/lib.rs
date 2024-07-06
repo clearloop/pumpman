@@ -1,10 +1,9 @@
 //! Replika service
 #![allow(unused)]
 
-pub use {cli::Opt, client::Client, config::Config};
+pub use {cli::Opt, config::Config};
 
 mod cli;
-mod client;
 mod config;
 mod context;
 mod model;

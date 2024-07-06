@@ -12,11 +12,12 @@ use serde::{Deserialize, Serialize};
     Selectable,
     AsChangeset,
     Clone,
+    Default,
     PartialEq,
     Debug,
     Serialize,
+    Deserialize,
     Identifiable,
-    Default,
     Eq,
     PartialOrd,
     Ord,
@@ -38,4 +39,13 @@ pub struct Takeover {
     pub twitter: Option<String>,
     /// Website link
     pub website: Option<String>,
+}
+
+impl Takeover {
+    pub fn new(address: String) -> Self {
+        Self {
+            address,
+            ..Default::default()
+        }
+    }
 }

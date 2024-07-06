@@ -1,9 +1,15 @@
 diesel::table! {
-    coins (address) {
-        address -> Text,
+    coins (mint) {
+        description -> Nullable<Text>,
+        image -> Nullable<Text>,
+        mint -> Text,
         name -> Text,
         symbol -> Text,
-        image -> Text,
+        telegram -> Nullable<Text>,
+        twitter -> Nullable<Text>,
+        website -> Nullable<Text>,
+        created_on -> Nullable<Text>,
+        dex -> Nullable<Text>
     }
 }
 

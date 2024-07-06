@@ -3687,6 +3687,8 @@ dependencies = [
  "itoa",
  "percent-encoding",
  "ryu",
+ "serde",
+ "serde_json",
  "sha1_smol",
  "socket2",
  "url",
@@ -3768,7 +3770,9 @@ dependencies = [
  "futures-util",
  "mpl-token-metadata",
  "redis 0.25.4",
+ "reqwest",
  "serde",
+ "serde_json",
  "solana-account-decoder",
  "solana-client",
  "solana-sdk",
@@ -5554,7 +5558,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c63345cf32a8850ebddcdd769dc2d5193d5e231262d5dada264b79da01a664da"
 dependencies = [
  "aquamarine",
- "bincode",
  "bytes",
  "derive_more",
  "dptree",
