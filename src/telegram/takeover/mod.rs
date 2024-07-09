@@ -1,10 +1,11 @@
 //! Telegram takeover bot
 
 use crate::{
+    api::HttpClient,
     context::Context,
-    model::{Coin, Takeover},
+    model::Takeover,
     schema::takeovers,
-    telegram,
+    telegram::{self, keyboard},
 };
 use anyhow::anyhow;
 use diesel::RunQueryDsl;
@@ -174,7 +175,10 @@ async fn receive_cto(
         return Ok(());
     }
 
-    let Ok(coin) = Coin::get(&mint, &context)
+    let redis = &mut context.redis().await?;
+    let Ok(coin) = context
+        .client
+        .coin(&mint, false, redis)
         .await
         .map_err(|e| tracing::error!("{e}"))
     else {
@@ -190,7 +194,6 @@ If you believe this is a bug, please contact our dev @takeoverfyi
         return Ok(());
     };
 
-    let redis = &mut context.redis().await?;
     bot.send_message(
         msg.chat.id,
         format!(
@@ -204,7 +207,10 @@ ${} \- {}
         ),
     )
     .parse_mode(ParseMode::MarkdownV2)
-    .reply_markup(coin.keyboards(context.client.dex_tokens(&mint, redis).await)?)
+    .reply_markup(keyboard::coin(
+        &mint,
+        context.client.pair(&mint, false, redis).await,
+    )?)
     .await?;
 
     bot.send_message(
@@ -231,7 +237,7 @@ async fn receive_cto_address(
     msg: Message,
 ) -> Result<()> {
     let handle = msg.text().unwrap_or_default().trim().to_string();
-    if !handle.starts_with("@") || handle.contains(|w: char| w.is_ascii_whitespace()) {
+    if !handle.starts_with('@') || handle.contains(|w: char| w.is_ascii_whitespace()) {
         bot.send_message(msg.chat.id, "Invalid telegram group handle.")
             .await?;
         return Ok(());
@@ -249,7 +255,7 @@ async fn receive_cto_address(
     // TODO: forward a message from alerts to user
     bot.send_message(
         msg.chat.id,
-        format!("All set up! Your community page is https://symbol.takeover.fyi"),
+        "All set up! Your community page is https://symbol.takeover.fyi".to_string(),
     )
     .reply_markup(ReplyMarkup::InlineKeyboard(InlineKeyboardMarkup {
         inline_keyboard: vec![vec![InlineKeyboardButton {

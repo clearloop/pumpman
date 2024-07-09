@@ -16,9 +16,11 @@ borsh = "1.5.1"
 clap = { version = "4.5.8", features = ["derive"] }
 diesel = { version = "2.2.1", features = ["postgres", "r2d2"] }
 futures-util = "0.3.30"
+http-cache-reqwest = "0.14.0"
 mpl-token-metadata = "4.1.2"
 redis = { version = "0.25.4", features = ["json"]}
 reqwest = { version = "0.11", features = ["json"]}
+reqwest-middleware = { version = "0.3.2", features = ["json"]}
 serde = "1.0.203"
 serde_json = "1.0.120"
 solana-account-decoder = "2.0.1"

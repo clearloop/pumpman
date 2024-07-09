@@ -36,7 +36,7 @@ impl Postgres {
             pool: Arc::new(Mutex::new(Pool::builder().build(ConnectionManager::<
                 PgConnection,
             >::new(
-                &uri.to_string()
+                uri.to_string()
             ))?)),
         };
 

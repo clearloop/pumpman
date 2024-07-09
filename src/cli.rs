@@ -1,7 +1,7 @@
 //! CLI operations
 
 use crate::{
-    api::{DexScreenerApi, SolRpcApi},
+    api::{HttpClient, SolRpcApi},
     context::Context,
     telegram::TakeoverBot,
     Config,
@@ -54,12 +54,14 @@ impl Opt {
                 Ok(())
             }
             Command::Metadata { mint } => {
-                let meta = context.client.coin(&mint).await?;
+                let con = &mut context.redis().await?;
+                let meta = context.client.coin(&mint, true, con).await?;
                 println!("{meta:#?}");
                 Ok(())
             }
             Command::Dex { mint } => {
-                let pairs = context.client.tokens(&mint).await?;
+                let con = &mut context.redis().await?;
+                let pairs = context.client.tokens(&mint, true, con).await?;
                 println!("{pairs:#?}");
                 Ok(())
             }

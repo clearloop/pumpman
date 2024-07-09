@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 /// Pump fun coin model
 ///
 /// https://frontend-api.pump.fun/coins/:coin
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Coin {
     /// Mint address of this coin
     pub mint: String,

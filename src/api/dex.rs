@@ -1,24 +1,20 @@
 //! Dexscreener APis
-use crate::api::HttpClient;
-use anyhow::Result;
-use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 
-const DEX_SCREENER: &str = "https://api.dexscreener.com/latest/dex/tokens/";
+const DEX_SCREENER: &str = "https://api.dexscreener.com/latest/dex";
 
-/// Dexscreener APi
-#[async_trait]
-pub trait DexScreenerApi: HttpClient {
-    /// Get one or multiple pairs by token address
-    async fn tokens(&self, mint: &str) -> Result<DexScreenerResult> {
-        self.get(&format!("{DEX_SCREENER}/{}", mint))
-            .await
-            .map_err(Into::into)
+/// Dexscreener API
+pub struct DexScreenerApi;
+
+impl DexScreenerApi {
+    /// Dexscreener tokens
+    pub fn tokens(mint: &str) -> String {
+        format!("{DEX_SCREENER}/tokens/{mint}")
     }
 }
 
 #[derive(Clone, Deserialize, Debug)]
-pub struct DexScreenerResult {
+pub struct DexScreenerTokensResult {
     pub pairs: Option<Vec<DexScreenerPair>>,
 }
 

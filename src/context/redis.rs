@@ -31,7 +31,7 @@ pub fn set<T: Serialize>(
     exp: impl Into<Option<u64>>,
     con: &mut Connection,
 ) -> Result<()> {
-    let _ = con.set_ex(
+    con.set_ex(
         key,
         serde_json::to_string(value)?,
         exp.into().unwrap_or(DAY),

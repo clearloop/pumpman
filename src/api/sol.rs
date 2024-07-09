@@ -12,6 +12,7 @@ pub trait SolRpcApi {
     /// Solana rpc client
     fn rpc(&self) -> &Arc<RpcClient>;
 
+    #[allow(unused)]
     /// get mpl token metadata
     async fn mpl_token_metadata(&self, mint: &str) -> Result<Metadata> {
         let acc = Pubkey::find_program_address(
