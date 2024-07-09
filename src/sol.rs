@@ -10,7 +10,7 @@ const LOG_PREFIX: &str = "Program data: ";
 const DISCRIMINATOR_SIZE: usize = 8;
 
 /// Parse logs to event
-pub fn parse<T: AnchorDeserialize>(logs: Vec<String>) -> Option<T> {
+pub fn parse<T: AnchorDeserialize>(logs: &[String]) -> Option<T> {
     let event = logs
         .iter()
         .find(|l| l.starts_with(LOG_PREFIX))?

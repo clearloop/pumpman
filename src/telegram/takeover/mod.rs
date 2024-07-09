@@ -175,7 +175,7 @@ async fn receive_cto(
         return Ok(());
     }
 
-    let redis = &mut context.redis().await?;
+    let redis = &mut context.redis()?;
     let Ok(coin) = context
         .client
         .coin(&mint, false, redis)
@@ -244,13 +244,13 @@ async fn receive_cto_address(
     }
 
     takeover.telegram = handle;
-    takeover.proposer = telegram::uid(&msg)
+    takeover.admin = telegram::uid(&msg)
         .ok_or(anyhow!("Takeover action running in group"))?
         .to_string();
 
     diesel::insert_into(takeovers::table)
         .values(takeover)
-        .execute(&mut context.postgres().await?)?;
+        .execute(&mut context.postgres()?)?;
 
     // TODO: forward a message from alerts to user
     bot.send_message(

@@ -1,6 +1,9 @@
 // Day in seconds
 pub const DAY: u64 = 86400;
 
+// 3 hrs
+pub const THOURS: u64 = 12800;
+
 pub mod base64 {
     use anyhow::Result;
     use base64::{engine::general_purpose::STANDARD, Engine as _};

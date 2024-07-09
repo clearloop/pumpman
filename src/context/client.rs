@@ -3,7 +3,6 @@
 use crate::{
     api::{HttpClient, SolRpcApi},
     config::Cluster,
-    utils::DAY,
 };
 use anyhow::Result;
 use solana_client::nonblocking::rpc_client::RpcClient;
@@ -36,8 +35,6 @@ impl SolRpcApi for Client {
 }
 
 impl HttpClient for Client {
-    const CACHE_MAX_AGE: u64 = DAY;
-
     fn client(&self) -> &Arc<reqwest::Client> {
         &self.http
     }

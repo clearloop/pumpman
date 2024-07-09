@@ -1,8 +1,12 @@
 use anyhow::Result;
 use async_trait::async_trait;
 use mpl_token_metadata::accounts::Metadata;
-use solana_client::{nonblocking::rpc_client::RpcClient, rpc_config::RpcTransactionConfig};
-use solana_sdk::{pubkey::Pubkey, signature::Signature};
+use redis::Connection;
+use solana_client::{
+    nonblocking::rpc_client::RpcClient, rpc_config::RpcTransactionConfig,
+    rpc_response::RpcTokenAccountBalance,
+};
+use solana_sdk::{commitment_config::CommitmentConfig, pubkey::Pubkey, signature::Signature};
 use solana_transaction_status::{EncodedConfirmedTransactionWithStatusMeta, UiTransactionEncoding};
 use std::{str::FromStr, sync::Arc};
 
@@ -11,6 +15,24 @@ use std::{str::FromStr, sync::Arc};
 pub trait SolRpcApi {
     /// Solana rpc client
     fn rpc(&self) -> &Arc<RpcClient>;
+
+    async fn top_holders(
+        &self,
+        mint: &str,
+        _update: bool,
+        _con: &mut Connection,
+    ) -> Result<Vec<RpcTokenAccountBalance>> {
+        let holders = self
+            .rpc()
+            .get_token_largest_accounts_with_commitment(
+                &Pubkey::from_str(&mint)?,
+                CommitmentConfig::finalized(),
+            )
+            .await?
+            .value;
+
+        Ok(holders)
+    }
 
     #[allow(unused)]
     /// get mpl token metadata

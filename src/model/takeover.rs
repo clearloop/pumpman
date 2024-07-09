@@ -23,8 +23,6 @@ use serde::{Deserialize, Serialize};
     Ord,
     Hash,
 )]
-#[diesel(belongs_to(Coin, foreign_key = address))]
-#[diesel(primary_key(id))]
 pub struct Takeover {
     /// Sequence id
     #[diesel(deserialize_as = i64)]
@@ -34,7 +32,7 @@ pub struct Takeover {
     /// The address of the token to be taken over
     pub mint: String,
     /// Telegram user id of this takeover
-    pub proposer: String,
+    pub admin: String,
     /// Telegram link
     pub telegram: String,
     /// Twitter link

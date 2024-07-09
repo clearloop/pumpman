@@ -1,10 +1,13 @@
 //! Global context
 
-use self::{client::Client, postgres::Conn};
 use crate::Config;
 use ::redis::Connection;
 use anyhow::Result;
-pub use {postgres::Postgres, redis::Redis};
+pub use {
+    client::Client,
+    postgres::{Conn, Postgres},
+    redis::Redis,
+};
 
 mod client;
 mod postgres;
@@ -33,17 +36,17 @@ impl Context {
     }
 
     /// Init context
-    pub async fn init(&self) -> Result<()> {
-        self.postgres.init().await
+    pub fn init(&self) -> Result<()> {
+        self.postgres.init()
     }
 
     /// Postgres connection
-    pub async fn postgres(&self) -> Result<Conn> {
-        self.postgres.conn().await
+    pub fn postgres(&self) -> Result<Conn> {
+        self.postgres.conn()
     }
 
     /// Redis connection
-    pub async fn redis(&self) -> Result<Connection> {
-        self.redis.con().await.map_err(Into::into)
+    pub fn redis(&self) -> Result<Connection> {
+        self.redis.con().map_err(Into::into)
     }
 }

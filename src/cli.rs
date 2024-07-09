@@ -16,9 +16,11 @@ pub enum Command {
     /// Prints transaction from signature
     Sig { signature: String },
     /// Prints metadata of a token
-    Metadata { mint: String },
+    Coin { mint: String },
     /// Prints pairs of a token
     Dex { mint: String },
+    /// Init database
+    Init,
     /// Start the takeover service
     Takeover,
 }
@@ -44,26 +46,24 @@ impl Opt {
         let context = Context::new(&config)?;
 
         // pre-process
-        context.init().await?;
+        context.init()?;
 
         // match commands
         match self.command {
+            Command::Init => {}
             Command::Sig { signature } => {
                 let tx = context.client.tx(&signature).await?;
                 println!("{tx:#?}");
-                Ok(())
             }
-            Command::Metadata { mint } => {
-                let con = &mut context.redis().await?;
+            Command::Coin { mint } => {
+                let con = &mut context.redis()?;
                 let meta = context.client.coin(&mint, true, con).await?;
                 println!("{meta:#?}");
-                Ok(())
             }
             Command::Dex { mint } => {
-                let con = &mut context.redis().await?;
+                let con = &mut context.redis()?;
                 let pairs = context.client.tokens(&mint, true, con).await?;
                 println!("{pairs:#?}");
-                Ok(())
             }
             Command::Takeover => {
                 let bot = TakeoverBot::new(
@@ -77,9 +77,9 @@ impl Opt {
                     tracing::error!("takeover bot broken: {e}");
                     result = bot.start().await;
                 }
-
-                Ok(())
             }
         }
+
+        Ok(())
     }
 }

@@ -5,3 +5,8 @@
 //!   1.2
 //! 2. telegram message handler / subscribe
 //! 3. API service
+#![allow(unused)]
+
+mod pump;
+
+use pump::PumpSub;

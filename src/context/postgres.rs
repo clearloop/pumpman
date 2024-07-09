@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
 use anyhow::Result;
-use async_lock::Mutex;
 use diesel::{
     pg::PgConnection,
     prelude::*,
@@ -13,8 +12,9 @@ use url::Url;
 ///
 /// NOTE: do not change the orders since there
 /// are references inside.
-const CREATE_TABLES: [&str; 2] = [
+const CREATE_TABLES: [&str; 3] = [
     include_str!("../../sql/coins.sql"),
+    include_str!("../../sql/users.sql"),
     include_str!("../../sql/takeovers.sql"),
 ];
 
@@ -24,7 +24,7 @@ pub type Conn = PooledConnection<ConnectionManager<PgConnection>>;
 /// Postgres instance
 #[derive(Clone)]
 pub struct Postgres {
-    pool: Arc<Mutex<Pool<ConnectionManager<PgConnection>>>>,
+    pool: Arc<Pool<ConnectionManager<PgConnection>>>,
 }
 
 impl Postgres {
@@ -33,32 +33,30 @@ impl Postgres {
         tracing::debug!("initializing database ...");
 
         let this = Self {
-            pool: Arc::new(Mutex::new(Pool::builder().build(ConnectionManager::<
-                PgConnection,
-            >::new(
-                uri.to_string()
-            ))?)),
+            pool: Arc::new(
+                Pool::builder().build(ConnectionManager::<PgConnection>::new(uri.to_string()))?,
+            ),
         };
 
         Ok(this)
     }
 
     /// Get pooled connection
-    pub async fn conn(&self) -> Result<Conn> {
-        self.pool.lock().await.get().map_err(Into::into)
+    pub fn conn(&self) -> Result<Conn> {
+        self.pool.get().map_err(Into::into)
     }
 
     /// Init database
-    pub async fn init(&self) -> Result<()> {
-        self.create_tables().await
+    pub fn init(&self) -> Result<()> {
+        self.create_tables()
     }
 
     /// Create tables if not exists
-    async fn create_tables(&self) -> Result<()> {
-        let conn = &mut self.conn().await?;
+    fn create_tables(&self) -> Result<()> {
+        let conn = &mut self.conn()?;
         for create_table in CREATE_TABLES {
             if let Err(e) = diesel::sql_query(create_table).execute(conn) {
-                tracing::trace!("Failed to table: {e}\n{}", create_table);
+                tracing::debug!("Failed to table: {e}\n{}", create_table);
             }
         }
 
