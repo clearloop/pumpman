@@ -1,7 +1,7 @@
 //! Telegram takeover bot
 
 use crate::{
-    context::{Context, Postgres, Redis},
+    context::Context,
     model::{Coin, Takeover},
     schema::takeovers,
     telegram,
@@ -12,18 +12,15 @@ use serde::{Deserialize, Serialize};
 use solana_sdk::pubkey::Pubkey;
 use std::{str::FromStr, sync::Arc};
 use teloxide::{
-    dispatching::{
-        dialogue::{self, serializer::Json, ErasedStorage, InMemStorage, RedisStorage, Storage},
-        UpdateHandler,
-    },
+    dispatching::dialogue::{self, serializer::Json, ErasedStorage, RedisStorage, Storage},
     dptree::case,
     payloads::SendMessageSetters,
     prelude::*,
     types::{
-        BotCommand, InlineKeyboardButton, InlineKeyboardButtonKind, InlineKeyboardMarkup,
-        KeyboardButton, KeyboardMarkup, MenuButton, ParseMode, ReplyMarkup, WebAppInfo,
+        InlineKeyboardButton, InlineKeyboardButtonKind, InlineKeyboardMarkup, MenuButton,
+        ParseMode, ReplyMarkup, WebAppInfo,
     },
-    utils::command::{BotCommands, CommandDescriptions},
+    utils::command::BotCommands,
 };
 
 type TakeoverDialogue = Dialogue<State, ErasedStorage<State>>;
@@ -80,8 +77,8 @@ impl TakeoverBot {
             Update::filter_callback_query().branch(case![State::Start].endpoint(callback_takeover));
 
         let schema = dialogue::enter::<Update, ErasedStorage<State>, State, _>()
-            .branch(message)
-            .branch(callback);
+            .branch(callback)
+            .branch(message);
 
         self.bot
             .set_chat_menu_button()
@@ -136,7 +133,11 @@ Building better CTOs, feedbacks and ideas are welcome! @takeoverfyi
 }
 
 async fn callback_takeover(bot: Bot, dialogue: TakeoverDialogue, q: CallbackQuery) -> Result<()> {
-    let Some(msg) = q.message else { return Ok(()) };
+    let Some(msg) = q.message else {
+        return Ok(());
+    };
+
+    tracing::trace!("{:#?}", msg);
     takeover(bot, dialogue, msg).await
 }
 
@@ -184,7 +185,8 @@ Failed to get token metadata, re-input the token address to retry.
 
 If you believe this is a bug, please contact our dev @takeoverfyi
 "#,
-        );
+        )
+        .await?;
         return Ok(());
     };
 
@@ -202,7 +204,7 @@ ${} \- {}
         ),
     )
     .parse_mode(ParseMode::MarkdownV2)
-    .reply_markup(coin.keyboards(redis).await?)
+    .reply_markup(coin.keyboards(context.client.dex_tokens(&mint, redis).await)?)
     .await?;
 
     bot.send_message(
@@ -244,7 +246,7 @@ async fn receive_cto_address(
         .values(takeover)
         .execute(&mut context.postgres().await?)?;
 
-    // TODO: forward a message to community
+    // TODO: forward a message from alerts to user
     bot.send_message(
         msg.chat.id,
         format!("All set up! Your community page is https://symbol.takeover.fyi"),
@@ -273,6 +275,7 @@ async fn cancel(bot: Bot, dialogue: TakeoverDialogue, msg: Message) -> Result<()
 }
 
 async fn invalid_state(bot: Bot, msg: Message) -> Result<()> {
+    tracing::warn!("{msg:#?}");
     bot.send_message(
         msg.chat.id,
         "Unable to handle the message. Type /start to see the usage.",

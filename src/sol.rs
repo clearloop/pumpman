@@ -1,12 +1,10 @@
+#![allow(unused)]
+
 use crate::utils::base64;
 use anchor_lang::AnchorDeserialize;
-use mpl_token_metadata::accounts::Metadata as MplMetadata;
-use serde::{Deserialize, Serialize};
-use serde_json::Value;
-use solana_sdk::pubkey::Pubkey;
 
-// pub mod raydium;
-pub mod pump;
+anchor_lang::declare_program!(pump);
+anchor_lang::declare_program!(raydium);
 
 const LOG_PREFIX: &str = "Program data: ";
 const DISCRIMINATOR_SIZE: usize = 8;

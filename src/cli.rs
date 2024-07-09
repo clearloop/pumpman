@@ -1,9 +1,14 @@
 //! CLI operations
 
-use crate::{context::Context, telegram::TakeoverBot, Config};
-use anyhow::{anyhow, Result};
+use crate::{
+    api::{DexScreenerApi, SolRpcApi},
+    context::Context,
+    telegram::TakeoverBot,
+    Config,
+};
+use anyhow::Result;
 use clap::{Parser, Subcommand};
-use std::{fs, path::PathBuf};
+use std::path::PathBuf;
 
 /// Sub commands
 #[derive(Debug, Subcommand)]
@@ -12,6 +17,8 @@ pub enum Command {
     Sig { signature: String },
     /// Prints metadata of a token
     Metadata { mint: String },
+    /// Prints pairs of a token
+    Dex { mint: String },
     /// Start the takeover service
     Takeover,
 }
@@ -41,10 +48,19 @@ impl Opt {
 
         // match commands
         match self.command {
-            Command::Sig { signature } => context.client.sig(&signature).await,
+            Command::Sig { signature } => {
+                let tx = context.client.tx(&signature).await?;
+                println!("{tx:#?}");
+                Ok(())
+            }
             Command::Metadata { mint } => {
                 let meta = context.client.coin(&mint).await?;
-                println!("{:#?}", meta);
+                println!("{meta:#?}");
+                Ok(())
+            }
+            Command::Dex { mint } => {
+                let pairs = context.client.tokens(&mint).await?;
+                println!("{pairs:#?}");
                 Ok(())
             }
             Command::Takeover => {

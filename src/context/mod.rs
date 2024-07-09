@@ -1,13 +1,9 @@
 //! Global context
 
 use self::{client::Client, postgres::Conn};
-use crate::{model::Coin, schema::coins, Config};
-use ::redis::{Commands, Connection};
+use crate::Config;
+use ::redis::Connection;
 use anyhow::Result;
-use diesel::QueryDsl;
-use diesel::*;
-use mpl_token_metadata::accounts::Metadata;
-use url::Url;
 pub use {postgres::Postgres, redis::Redis};
 
 mod client;

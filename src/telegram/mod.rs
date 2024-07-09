@@ -1,4 +1,3 @@
-use anyhow::anyhow;
 pub use takeover::TakeoverBot;
 use teloxide::types::Message;
 

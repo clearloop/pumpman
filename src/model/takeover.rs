@@ -1,5 +1,5 @@
 //! Community take over
-use crate::{model::Coin, schema::takeovers};
+use crate::schema::takeovers;
 use async_graphql::SimpleObject;
 use diesel::prelude::*;
 use serde::{Deserialize, Serialize};

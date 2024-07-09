@@ -1,72 +1,74 @@
 //! Solana programs
 
-use crate::{config::Cluster, context::Redis, model::Coin};
-use anyhow::Result;
-use async_lock::Mutex;
-use futures_util::StreamExt;
-use mpl_token_metadata::accounts::Metadata;
-use redis::Commands;
-use serde::{Deserialize, Serialize};
-use serde_json::Value;
-use solana_client::{
-    nonblocking::{pubsub_client::PubsubClient, rpc_client::RpcClient},
-    rpc_config::{RpcTransactionConfig, RpcTransactionLogsConfig, RpcTransactionLogsFilter},
+use crate::{
+    api::{DexScreenerApi, HttpClient, PumpApi, SolRpcApi},
+    config::Cluster,
+    model::Coin,
+    redis,
+    utils::DAY,
 };
-use solana_sdk::{commitment_config::CommitmentConfig, pubkey::Pubkey, signature::Signature};
-use solana_transaction_status::UiTransactionEncoding;
-use std::{str::FromStr, sync::Arc};
+use ::redis::Connection;
+use anyhow::Result;
+use serde_json::Value;
+use solana_client::nonblocking::rpc_client::RpcClient;
+use std::sync::Arc;
+
+const CACHE_DEX_TOKENS: &str = "dexscreener::tokens::";
 
 /// Replika client
 #[derive(Clone)]
-pub struct Client(Arc<Mutex<RpcClient>>);
+pub struct Client {
+    /// Http client
+    http: Arc<reqwest::Client>,
+
+    /// Solana rpc client
+    rpc: Arc<RpcClient>,
+}
 
 impl Client {
-    /// Create new solana client
+    /// Create new client
     pub fn new(cluster: &Cluster) -> Result<Self> {
-        Ok(Self(Arc::new(Mutex::new(RpcClient::new(
-            cluster.http.to_string(),
-        )))))
+        Ok(Self {
+            http: Arc::new(reqwest::Client::new()),
+            rpc: Arc::new(RpcClient::new(cluster.http.to_string())),
+        })
     }
 
     /// Get token from address
     pub async fn coin(&self, mint: &str) -> Result<Coin> {
-        let acc = Pubkey::find_program_address(
-            &[
-                b"metadata",
-                &mpl_token_metadata::ID.to_bytes(),
-                &Pubkey::from_str(mint)?.to_bytes(),
-            ],
-            &mpl_token_metadata::ID.to_bytes().into(),
-        );
-
-        let data = self.0.lock().await.get_account_data(&acc.0).await?;
-        let mplmeta = Metadata::from_bytes(&data)?;
-
+        let mplmeta = self.mpl_token_metadata(mint).await?;
         let meta: Value = reqwest::get(&mplmeta.uri).await?.json().await?;
         let mut coin: Coin = mplmeta.into();
         coin.append(meta);
-
         Ok(coin)
     }
 
-    /// Get siganture and print UI transaction
-    pub async fn sig(&self, sig: &str) -> Result<()> {
-        let sig = Signature::from_str(sig)?;
-        let r = self
-            .0
-            .lock()
-            .await
-            .get_transaction_with_config(
-                &sig,
-                RpcTransactionConfig {
-                    encoding: Some(UiTransactionEncoding::Json),
-                    commitment: None,
-                    max_supported_transaction_version: Some(0),
-                },
-            )
-            .await?;
+    /// Get dexscreener url
+    pub async fn dex_tokens(&self, mint: &str, con: &mut Connection) -> Option<String> {
+        let key = format!("{CACHE_DEX_TOKENS}:{mint}");
+        let pairs = if let Ok(cache) = redis::get(&key, con) {
+            cache
+        } else {
+            let r = self.tokens(mint).await.ok()?.pairs?;
+            redis::set(&key, &r, DAY, con).ok()?;
+            r
+        };
 
-        println!("{r:#?}");
-        Ok(())
+        pairs.first().and_then(|p| Some(p.url.clone()))
     }
 }
+
+impl SolRpcApi for Client {
+    fn rpc(&self) -> &Arc<RpcClient> {
+        &self.rpc
+    }
+}
+
+impl HttpClient for Client {
+    fn client(&self) -> &Arc<reqwest::Client> {
+        &self.http
+    }
+}
+
+impl DexScreenerApi for Client {}
+impl PumpApi for Client {}

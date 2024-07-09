@@ -1,16 +1,13 @@
 //! Basic coin information
 
-use crate::{context::Context, redis, schema::coins, utils::Dex};
-use ::redis::Connection;
+use crate::{context::Context, schema::coins};
 use anyhow::Result;
 use async_graphql::SimpleObject;
 use diesel::prelude::*;
 use mpl_token_metadata::accounts::Metadata;
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use serde_json::Value;
-use teloxide::types::{
-    InlineKeyboardButton, InlineKeyboardButtonKind, InlineKeyboardMarkup, ReplyMarkup,
-};
+use teloxide::types::{InlineKeyboardButton, InlineKeyboardMarkup, ReplyMarkup};
 
 /// Original coin information
 #[derive(
@@ -86,7 +83,7 @@ impl Coin {
     }
 
     /// Get telegram keyboards for this coin
-    pub async fn keyboards(&self, con: &mut Connection) -> Result<ReplyMarkup> {
+    pub fn keyboards(&self, dex: Option<String>) -> Result<ReplyMarkup> {
         let mut keyboards = vec![];
         if let Some(true) = self.created_on.as_ref().map(|p| p.contains("pump.fun")) {
             keyboards.push(InlineKeyboardButton::url(
@@ -95,7 +92,7 @@ impl Coin {
             ));
         }
 
-        if let Some(dex) = Dex::dexscreener(&self.mint, con).await {
+        if let Some(dex) = dex {
             keyboards.push(InlineKeyboardButton::url(
                 "View on dexscreener",
                 dex.parse()?,
