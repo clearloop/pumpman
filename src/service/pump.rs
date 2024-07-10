@@ -1,12 +1,15 @@
 //! Solana subscriber
 use crate::{
     api::{HttpClient, SolRpcApi},
-    context::{Conn, Context},
+    context::{Conn, Context, TaskCache},
     schema::coins,
+    service::Event,
     sol::{self, pump::events},
+    Config,
 };
 use anyhow::Result;
 use bigdecimal::BigDecimal;
+use core::time;
 use diesel::prelude::*;
 use futures_util::StreamExt;
 use redis::{Commands, Connection};
@@ -15,19 +18,45 @@ use solana_client::{
     rpc_config::{RpcTransactionLogsConfig, RpcTransactionLogsFilter},
 };
 use solana_sdk::commitment_config::CommitmentConfig;
-use std::{str::FromStr, sync::Arc};
+use std::{
+    collections::HashSet,
+    rc::Rc,
+    str::FromStr,
+    sync::Arc,
+    time::{Duration, SystemTime},
+};
+use tokio::sync::mpsc::Sender;
 
 /// Solana subscriber
 pub struct PumpSub {
-    context: Context,
-    pubsub: Arc<PubsubClient>,
+    /// Service context
+    context: Arc<Context>,
+    /// Solana pubsub client
+    pubsub: Rc<PubsubClient>,
+    /// Queue for checking soldout
+    soldout: HashSet<String>,
+    /// Queue for checking holder changes
+    holders: HashSet<(String, u8)>,
+    /// Pump event sender
+    tx: Sender<Event>,
 }
 
 impl PumpSub {
+    /// Create new pubsub
+    pub async fn new(config: &Config, context: Arc<Context>, tx: Sender<Event>) -> Result<Self> {
+        Ok(Self {
+            context,
+            pubsub: Rc::new(PubsubClient::new(&config.cluster.ws.to_string()).await?),
+            soldout: Default::default(),
+            holders: Default::default(),
+            tx,
+        })
+    }
+
     /// pumpfun subscriber
-    pub async fn start(&self) -> Result<()> {
-        let mut sub = self
-            .pubsub
+    pub async fn start(&mut self) -> Result<()> {
+        let pubsub = self.pubsub.clone();
+        let mut sub = pubsub
             .logs_subscribe(
                 RpcTransactionLogsFilter::Mentions(vec![sol::pump::ID.to_string()]),
                 RpcTransactionLogsConfig {
@@ -36,7 +65,7 @@ impl PumpSub {
             )
             .await?;
 
-        // subscribe pumpfun events
+        let mut last = SystemTime::now();
         let postgres = &mut self.context.postgres()?;
         let redis = &mut self.context.redis()?;
         while let Some(resp) = sub.0.next().await {
@@ -52,14 +81,32 @@ impl PumpSub {
             if let Some(event) = sol::parse::<sol::pump::events::CompleteEvent>(&resp.value.logs) {
                 self.handle_complete(event, postgres, redis).await?;
             }
+
+            // Send changes to receiver
+            if last.elapsed()? > Duration::from_secs(10) {
+                if !self.soldout.is_empty() {
+                    self.tx
+                        .send(PumpEvent::DevSoldout(self.soldout.drain().collect()).into())
+                        .await?;
+                }
+
+                if !self.holders.is_empty() {
+                    self.tx
+                        .send(PumpEvent::HoldersChanged(self.holders.drain().collect()).into())
+                        .await?;
+                }
+            }
         }
 
         Ok(())
     }
 
     /// Handle trade event
+    ///
+    /// - subscribe dev soldout
+    /// - subscribe change of holders
     async fn handle_trade(
-        &self,
+        &mut self,
         event: events::TradeEvent,
         postgres: &mut Conn,
         redis: &mut Connection,
@@ -67,27 +114,19 @@ impl PumpSub {
         let mint = event.mint.to_string();
         self.ensure_coin(&mint, postgres, redis)?;
 
-        // check if the user is dev
-        let coin = self.context.client.coin(&mint, false, redis).await?;
-        if event.user.to_string() != coin.creator {
-            return Ok(());
+        if !redis.exists(TaskCache::DevSoldOut(&mint))? {
+            self.soldout.insert(mint.clone());
         }
 
-        // check if dev soldout
-        let holders = self.context.client.top_holders(&mint, true, redis).await?;
-        if !holders.iter().any(|acc| {
-            if acc.address != coin.creator {
-                return false;
+        for percent in [30, 10] {
+            if !redis.exists(TaskCache::Top10Holder {
+                mint: &mint,
+                percent: 30,
+            })? {
+                self.holders.insert((mint.clone(), percent));
             }
-
-            BigDecimal::from_str(&acc.amount.ui_amount_string)
-                .map(|b| b < BigDecimal::from(100))
-                .unwrap_or(false)
-        }) {
-            return Ok(());
         }
 
-        // subscribe to channel on soldout
         Ok(())
     }
 
@@ -105,10 +144,24 @@ impl PumpSub {
         if !redis.exists(mint)? {
             diesel::insert_into(coins::table)
                 .values(coins::mint.eq(mint.to_string()))
+                .on_conflict(coins::mint)
+                .do_nothing()
                 .execute(postgres)?;
             redis.set_nx(mint, true)?;
         }
 
         Ok(())
+    }
+}
+
+/// Pumpfun events
+pub enum PumpEvent {
+    DevSoldout(Vec<String>),
+    HoldersChanged(Vec<(String, u8)>),
+}
+
+impl From<PumpEvent> for Event {
+    fn from(pe: PumpEvent) -> Event {
+        Event::Pump(pe)
     }
 }

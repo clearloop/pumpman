@@ -43,14 +43,14 @@ pub struct TakeoverBot {
     /// Takeover bot instance
     bot: Bot,
     /// Databse interface
-    context: Context,
+    context: Arc<Context>,
     /// Redis db number
     redis: String,
 }
 
 impl TakeoverBot {
     /// Create a new takeover bot
-    pub fn new(takeover: &str, context: Context, redis: String) -> Self {
+    pub fn new(takeover: &str, context: Arc<Context>, redis: String) -> Self {
         Self {
             bot: Bot::new(takeover),
             context,
@@ -124,9 +124,7 @@ Only support private chats atm ))
 
     bot.send_message(
         msg.chat.id,
-        r#"
-Building better CTOs, feedbacks and ideas are welcome! @takeoverfyi 
-"#,
+        "Building better CTOs, feedbacks and ideas are welcome! @takeoverfyi",
     )
     .reply_markup(menu()?)
     .await?;

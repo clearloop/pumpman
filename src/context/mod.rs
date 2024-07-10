@@ -6,13 +6,12 @@ use anyhow::Result;
 pub use {
     client::Client,
     postgres::{Conn, Postgres},
-    redis::Redis,
+    redis::{Redis, TaskCache},
 };
 
 mod client;
 mod postgres;
-pub mod redis;
-// mod telegram;
+mod redis;
 
 /// Database interface
 #[derive(Clone)]

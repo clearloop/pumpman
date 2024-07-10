@@ -1,5 +1,6 @@
 //! Dexscreener APis
-use serde::{Deserialize, Serialize};
+use crate::model::DexScreenerPair;
+use serde::Deserialize;
 
 const DEX_SCREENER: &str = "https://api.dexscreener.com/latest/dex";
 
@@ -16,13 +17,4 @@ impl DexScreenerApi {
 #[derive(Clone, Deserialize, Debug)]
 pub struct DexScreenerTokensResult {
     pub pairs: Option<Vec<DexScreenerPair>>,
-}
-
-#[derive(Clone, Deserialize, Serialize, Debug)]
-pub struct DexScreenerPair {
-    /// dex name of this pair
-    #[serde(rename = "dexId")]
-    pub dex_id: String,
-    /// dexscreener url of this pair
-    pub url: String,
 }

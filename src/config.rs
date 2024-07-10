@@ -39,7 +39,9 @@ pub struct Cluster {
 #[derive(Serialize, Deserialize)]
 pub struct Telegram {
     /// Telegram token of the takeover bot
-    pub takeover: String,
+    pub takeover_bot: String,
     /// Subscription chat id
-    pub takeoveralerts: String,
+    pub takeover_alerts: String,
+    /// Bot for takeover alerts
+    pub takeover_alerts_bot: String,
 }

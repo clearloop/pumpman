@@ -3,12 +3,11 @@
 use crate::{
     api::{HttpClient, SolRpcApi},
     context::Context,
-    telegram::TakeoverBot,
-    Config,
+    service, Config,
 };
 use anyhow::Result;
 use clap::{Parser, Subcommand};
-use std::path::PathBuf;
+use std::{path::PathBuf, sync::Arc};
 
 /// Sub commands
 #[derive(Debug, Subcommand)]
@@ -21,8 +20,6 @@ pub enum Command {
     Dex { mint: String },
     /// Init database
     Init,
-    /// Start the takeover service
-    Takeover,
 }
 
 /// Replika command line interfaces
@@ -33,7 +30,7 @@ pub struct Opt {
     config: PathBuf,
     /// Replika sub commands
     #[clap(subcommand)]
-    command: Command,
+    command: Option<Command>,
     /// The verbosity level.
     #[clap(short, long, action = clap::ArgAction::Count)]
     pub verbose: u8,
@@ -43,13 +40,22 @@ impl Opt {
     /// Run commands
     pub async fn run(self) -> Result<()> {
         let config = Config::load(self.config)?;
-        let context = Context::new(&config)?;
+        let context = Arc::new(Context::new(&config)?);
 
         // pre-process
         context.init()?;
 
+        let Some(command) = self.command else {
+            let mut result = service::start(&config, context.clone()).await;
+            while let Err(e) = result {
+                tracing::error!("service broken: {e}");
+                result = service::start(&config, context.clone()).await;
+            }
+            return Ok(());
+        };
+
         // match commands
-        match self.command {
+        match command {
             Command::Init => {}
             Command::Sig { signature } => {
                 let tx = context.client.tx(&signature).await?;
@@ -64,19 +70,6 @@ impl Opt {
                 let con = &mut context.redis()?;
                 let pairs = context.client.tokens(&mint, true, con).await?;
                 println!("{pairs:#?}");
-            }
-            Command::Takeover => {
-                let bot = TakeoverBot::new(
-                    &config.telegram.takeover,
-                    context,
-                    format!("{}/15", config.redis),
-                );
-
-                let mut result = bot.start().await;
-                while let Err(e) = result {
-                    tracing::error!("takeover bot broken: {e}");
-                    result = bot.start().await;
-                }
             }
         }
 
