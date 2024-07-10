@@ -3,6 +3,7 @@
 use crate::{
     api::{HttpClient, SolRpcApi},
     context::Context,
+    model::{Alert, AlertTitle},
     service, Config,
 };
 use anyhow::Result;
@@ -18,6 +19,8 @@ pub enum Command {
     Coin { mint: String },
     /// Prints pairs of a token
     Dex { mint: String },
+    /// Get alert info of a token
+    Info { mint: String },
     /// Init database
     Init,
 }
@@ -31,6 +34,9 @@ pub struct Opt {
     /// Replika sub commands
     #[clap(subcommand)]
     command: Option<Command>,
+    /// If update cache
+    #[clap(short, long)]
+    update: bool,
     /// The verbosity level.
     #[clap(short, long, action = clap::ArgAction::Count)]
     pub verbose: u8,
@@ -63,13 +69,26 @@ impl Opt {
             }
             Command::Coin { mint } => {
                 let con = &mut context.redis()?;
-                let meta = context.client.coin(&mint, true, con).await?;
-                println!("{meta:#?}");
+                let coin = context.client.coin(&mint, self.update, con).await?;
+                println!("{coin:#?}");
             }
             Command::Dex { mint } => {
                 let con = &mut context.redis()?;
-                let pairs = context.client.tokens(&mint, true, con).await?;
+                let pairs = context.client.tokens(&mint, self.update, con).await?;
                 println!("{pairs:#?}");
+            }
+            Command::Info { mint } => {
+                let con = &mut context.redis()?;
+                let coin = context.client.coin(&mint, self.update, con).await?;
+                let pairs = context.client.tokens(&mint, self.update, con).await?;
+                let holders = context.client.top_holders(&mint, self.update, con).await?;
+
+                println!(
+                    "{}",
+                    Alert::new(AlertTitle::DevSoldOut, coin)
+                        .pairs(pairs.pairs.unwrap_or_default())
+                        .holders(holders)
+                );
             }
         }
 

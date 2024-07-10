@@ -1,28 +1,29 @@
 //! Task processor
 
-use std::{str::FromStr, sync::Arc};
-
 use crate::{
     api::{HttpClient, SolRpcApi},
     context::Context,
-    model::Alert,
+    model::{Alert, AlertTitle},
     service::{Event, PumpEvent},
 };
 use anyhow::Result;
 use bigdecimal::BigDecimal;
-use teloxide::Bot;
+use std::{str::FromStr, sync::Arc};
+use teloxide::{requests::Requester, types::Recipient, Bot};
 use tokio::sync::mpsc::Receiver;
 
 /// Pump events handler
 pub struct Processor {
+    channel: String,
     reporter: Bot,
     context: Arc<Context>,
     rx: Receiver<Event>,
 }
 
 impl Processor {
-    pub fn new(reporter: Bot, context: Arc<Context>, rx: Receiver<Event>) -> Self {
+    pub fn new(channel: String, reporter: Bot, context: Arc<Context>, rx: Receiver<Event>) -> Self {
         Self {
+            channel,
             reporter,
             context,
             rx,
@@ -52,16 +53,7 @@ impl Processor {
 
             // check if dev soldout
             let holders = self.context.client.top_holders(&mint, true, redis).await?;
-            if !holders.iter().any(|acc| {
-                if acc.address != coin.creator {
-                    return false;
-                }
-
-                // if dev is soldout
-                BigDecimal::from_str(&acc.amount.ui_amount_string)
-                    .map(|b| b < BigDecimal::from(100))
-                    .unwrap_or(true)
-            }) {
+            if !coin.soldout(&holders) {
                 return Ok(());
             }
 
@@ -74,7 +66,11 @@ impl Processor {
                 .pairs
                 .unwrap_or_default();
 
-            let _alert = Alert::new(coin).pairs(pairs).holders(holders);
+            Alert::new(AlertTitle::DevSoldOut, coin)
+                .pairs(pairs)
+                .holders(holders)
+                .alert(&self.reporter, &self.channel)
+                .await?;
         }
 
         Ok(())

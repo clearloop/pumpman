@@ -982,6 +982,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "bitcode"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "48bc1c27654127a24c476d40198746860ef56475f41a601bfa5c4d0f832968f0"
+dependencies = [
+ "bytemuck",
+ "serde",
+]
+
+[[package]]
 name = "bitflags"
 version = "1.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3767,6 +3777,7 @@ dependencies = [
  "async-trait",
  "base64 0.22.1",
  "bigdecimal",
+ "bitcode",
  "borsh 1.5.1",
  "clap 4.5.8",
  "diesel",

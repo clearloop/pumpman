@@ -10,7 +10,11 @@ use redis::{Commands, Connection};
 use reqwest::Client;
 use serde::de::DeserializeOwned;
 use std::sync::Arc;
-pub use {dex::DexScreenerApi, pump::PumpApi, sol::SolRpcApi};
+pub use {
+    dex::DexScreenerApi,
+    pump::PumpApi,
+    sol::{Holders, SolRpcApi},
+};
 
 pub mod dex;
 mod pump;
