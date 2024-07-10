@@ -44,6 +44,7 @@ pub struct PumpSub {
 impl PumpSub {
     /// Create new pubsub
     pub async fn new(config: &Config, context: Arc<Context>, tx: Sender<Event>) -> Result<Self> {
+        tracing::trace!("Starting pubsub service ...");
         Ok(Self {
             context,
             pubsub: Rc::new(PubsubClient::new(&config.cluster.ws.to_string()).await?),
@@ -78,23 +79,22 @@ impl PumpSub {
                 continue;
             }
 
-            if let Some(event) = sol::parse::<sol::pump::events::CompleteEvent>(&resp.value.logs) {
-                self.handle_complete(event, postgres, redis).await?;
-            }
+            // if let Some(event) = sol::parse::<sol::pump::events::CompleteEvent>(&resp.value.logs) {
+            //     tracing::trace!("{event:?}");
+            //     self.handle_complete(event, postgres, redis).await?;
+            // }
 
             // Send changes to receiver
-            if last.elapsed()? > Duration::from_secs(10) {
-                if !self.soldout.is_empty() {
-                    self.tx
-                        .send(PumpEvent::DevSoldout(self.soldout.drain().collect()).into())
-                        .await?;
-                }
+            if !self.soldout.is_empty() {
+                self.tx
+                    .send(PumpEvent::DevSoldout(self.soldout.drain().collect()).into())
+                    .await?;
+            }
 
-                if !self.holders.is_empty() {
-                    self.tx
-                        .send(PumpEvent::HoldersChanged(self.holders.drain().collect()).into())
-                        .await?;
-                }
+            if !self.holders.is_empty() {
+                self.tx
+                    .send(PumpEvent::HoldersChanged(self.holders.drain().collect()).into())
+                    .await?;
             }
         }
 
@@ -118,15 +118,14 @@ impl PumpSub {
             self.soldout.insert(mint.clone());
         }
 
-        for percent in [30, 10] {
-            if !redis.exists(TaskCache::Top10Holder {
-                mint: &mint,
-                percent: 30,
-            })? {
-                self.holders.insert((mint.clone(), percent));
-            }
+        if redis.exists(TaskCache::Top10Holder {
+            mint: &mint,
+            percent: 10,
+        })? {
+            return Ok(());
         }
 
+        self.holders.insert((mint.clone(), 10));
         Ok(())
     }
 
@@ -155,6 +154,7 @@ impl PumpSub {
 }
 
 /// Pumpfun events
+#[derive(Debug)]
 pub enum PumpEvent {
     DevSoldout(Vec<String>),
     HoldersChanged(Vec<(String, u8)>),

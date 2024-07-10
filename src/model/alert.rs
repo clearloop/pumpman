@@ -4,12 +4,14 @@
 use crate::{
     api::Holders,
     model::{pump::Coin, DexScreenerPair},
+    telegram::Escape,
 };
 use anyhow::Result;
 use std::fmt::Display;
 use teloxide::{
+    payloads::SendMessageSetters,
     requests::Requester,
-    types::{Message, Recipient},
+    types::{Message, ParseMode, Recipient},
     Bot,
 };
 
@@ -24,14 +26,17 @@ pub struct Alert {
     pub pairs: Vec<DexScreenerPair>,
     /// Top holders
     pub holders: Holders,
+    /// If dev is soldout
+    pub soldout: bool,
 }
 
 impl Alert {
     /// Create new alert
-    pub fn new(title: AlertTitle, coin: Coin) -> Self {
+    pub fn new(title: AlertTitle, coin: Coin, soldout: bool) -> Self {
         Self {
             title,
             coin,
+            soldout,
             pairs: Default::default(),
             holders: Default::default(),
         }
@@ -52,8 +57,10 @@ impl Alert {
     pub async fn alert(&self, bot: &Bot, channel: &str) -> Result<Message> {
         bot.send_message(
             Recipient::ChannelUsername(channel.to_string()),
-            self.to_string(),
+            &self.to_string(),
         )
+        .parse_mode(ParseMode::MarkdownV2)
+        // .disable_web_page_preview(true)
         .await
         .map_err(Into::into)
     }
@@ -61,27 +68,45 @@ impl Alert {
 
 impl Display for Alert {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let soldout = self.coin.soldout(&self.holders);
-        let percent = self.holders.top10percent().unwrap_or_default();
+        let percent = self
+            .holders
+            .top10percent()
+            .unwrap_or_default()
+            .to_string()
+            .escaped();
         let socials = self.coin.socials();
         let dex = !self.pairs.is_empty();
-        let (title, name, symbol, mint) = (
-            &self.title,
-            &self.coin.name,
-            &self.coin.symbol,
+        let (address, title, name, symbol, mint, mc, count, soldout) = (
             &self.coin.mint,
+            &self.title.escaped(),
+            &self.coin.name.escaped(),
+            &self.coin.symbol.escaped(),
+            &self.coin.mint.escaped(),
+            &self
+                .coin
+                .usd_market_cap
+                .clone()
+                .map(|mc| (mc / 1000u32).round(2))
+                .unwrap_or_default()
+                .escaped(),
+            self.holders.len(),
+            self.soldout,
         );
 
         write!(
             f,
             r#"
-{title} - [{name}](https://pump.fun/{mint}) (${symbol})
+*{title}* \- [{name}](https://pump.fun/{mint}) \(${symbol}\)
 
-1. dev wallet sold out: {soldout}
-2. top10 holders HODL: {percent}%
-3. listed on dex: {dex}
+\- dev wallet sold out: {soldout}
+\- market cap: ${mc}k
+\- holders count: {count}
+\- top10 holders HODL: {percent}%
+\- listed on dex: {dex}
 {socials}
-Need more factors? join @takeoverfyi to share your ideas!
+```copy
+{address}
+```
 "#,
         )
     }
@@ -90,6 +115,7 @@ Need more factors? join @takeoverfyi to share your ideas!
 /// Title of message alert
 pub enum AlertTitle {
     DevSoldOut,
+    HoldersChanged(u8),
 }
 
 impl Display for AlertTitle {
@@ -98,7 +124,8 @@ impl Display for AlertTitle {
             f,
             "{}",
             match self {
-                Self::DevSoldOut => "Dev Soldout",
+                Self::DevSoldOut => "Dev Soldout".into(),
+                Self::HoldersChanged(threshold) => format!("Top 10 HODL under {threshold}%"),
             }
         )
     }

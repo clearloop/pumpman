@@ -1,9 +1,7 @@
 //! Pumpfun models
 
-use crate::api::Holders;
 use bigdecimal::BigDecimal;
 use serde::{Deserialize, Serialize};
-use std::str::FromStr;
 
 /// Pump fun coin model
 ///
@@ -39,30 +37,16 @@ pub struct Coin {
     /// Reply count
     pub reply_count: u32,
     /// last reply
-    pub last_reply: u64,
+    pub last_reply: Option<u64>,
     /// username of the dev
-    pub username: String,
+    pub username: Option<String>,
     /// Profile image of the dev
-    pub profile_image: String,
+    pub profile_image: Option<String>,
     /// market cap in USD
     pub usd_market_cap: Option<BigDecimal>,
 }
 
 impl Coin {
-    /// If dev is soldout
-    pub fn soldout(&self, holders: &Holders) -> bool {
-        !holders.iter().any(|acc| {
-            if acc.0 != self.creator {
-                return false;
-            }
-
-            // if dev is soldout
-            BigDecimal::from_str(&acc.1)
-                .map(|b| b < BigDecimal::from(100))
-                .unwrap_or(true)
-        })
-    }
-
     /// generate social links in markdown
     pub fn socials(&self) -> String {
         let mut socials = vec![];
@@ -79,6 +63,10 @@ impl Coin {
             socials.push(format!("[website]({website})"));
         }
 
-        format!("\n{}\n", socials.join(" | "))
+        if socials.is_empty() {
+            "".into()
+        } else {
+            format!("\n{}\n", socials.join(r" \| "))
+        }
     }
 }

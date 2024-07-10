@@ -8,19 +8,32 @@ use crate::{
 };
 use anyhow::Result;
 use clap::{Parser, Subcommand};
-use std::{path::PathBuf, sync::Arc};
+use solana_sdk::pubkey::Pubkey;
+use std::{path::PathBuf, str::FromStr, sync::Arc};
 
 /// Sub commands
 #[derive(Debug, Subcommand)]
 pub enum Command {
     /// Prints transaction from signature
-    Sig { signature: String },
+    Sig {
+        signature: String,
+    },
     /// Prints metadata of a token
-    Coin { mint: String },
+    Coin {
+        mint: String,
+    },
     /// Prints pairs of a token
-    Dex { mint: String },
+    Dex {
+        mint: String,
+    },
     /// Get alert info of a token
-    Info { mint: String },
+    Info {
+        mint: String,
+    },
+    TokenAccounts {
+        acc: String,
+        mint: String,
+    },
     /// Init database
     Init,
 }
@@ -52,6 +65,7 @@ impl Opt {
         context.init()?;
 
         let Some(command) = self.command else {
+            service::start(&config, context.clone()).await?;
             let mut result = service::start(&config, context.clone()).await;
             while let Err(e) = result {
                 tracing::error!("service broken: {e}");
@@ -74,19 +88,40 @@ impl Opt {
             }
             Command::Dex { mint } => {
                 let con = &mut context.redis()?;
-                let pairs = context.client.tokens(&mint, self.update, con).await?;
+                let pairs = context.client.pairs(&mint, self.update, con).await?;
                 println!("{pairs:#?}");
+            }
+            Command::TokenAccounts { acc, mint } => {
+                let con = &mut context.redis()?;
+                let accs = context
+                    .client
+                    .token_account(
+                        Pubkey::from_str(&mint)?,
+                        &Pubkey::from_str(&acc)?,
+                        self.update,
+                        con,
+                    )
+                    .await?;
+                println!("{accs:#?}");
             }
             Command::Info { mint } => {
                 let con = &mut context.redis()?;
                 let coin = context.client.coin(&mint, self.update, con).await?;
-                let pairs = context.client.tokens(&mint, self.update, con).await?;
-                let holders = context.client.top_holders(&mint, self.update, con).await?;
+                let pairs = context.client.pairs(&mint, self.update, con).await?;
+                let soldout = context
+                    .client
+                    .soldout(&coin.mint, &coin.creator, false, con)
+                    .await?;
+                let holders = context
+                    .client
+                    .top_holders(&mint, self.update, con)
+                    .await?
+                    .skip_bc(&coin.associated_bonding_curve);
 
                 println!(
                     "{}",
-                    Alert::new(AlertTitle::DevSoldOut, coin)
-                        .pairs(pairs.pairs.unwrap_or_default())
+                    Alert::new(AlertTitle::DevSoldOut, coin, soldout)
+                        .pairs(pairs)
                         .holders(holders)
                 );
             }

@@ -5,17 +5,20 @@ use crate::{
     config::Cluster,
 };
 use anyhow::Result;
+use redis::Connection;
 use solana_client::nonblocking::rpc_client::RpcClient;
-use std::sync::Arc;
+use solana_sdk::pubkey::Pubkey;
+use std::{str::FromStr, sync::Arc};
 
 /// Replika client
 #[derive(Clone)]
 pub struct Client {
     /// Http client
     http: Arc<reqwest::Client>,
-
     /// Solana rpc client
     rpc: Arc<RpcClient>,
+    /// Helius rpc client
+    helius: Arc<RpcClient>,
 }
 
 impl Client {
@@ -24,13 +27,41 @@ impl Client {
         Ok(Self {
             http: Arc::new(reqwest::Client::new()),
             rpc: Arc::new(RpcClient::new(cluster.http.to_string())),
+            helius: Arc::new(RpcClient::new(cluster.helius.to_string())),
         })
+    }
+
+    /// Check if account is soldout
+    pub async fn soldout(
+        &self,
+        mint: &str,
+        acc: &str,
+        update: bool,
+        redis: &mut Connection,
+    ) -> Result<bool> {
+        let mint = Pubkey::from_str(mint)?;
+        let acc = Pubkey::from_str(acc)?;
+        let accs = self.token_account(mint, &acc, update, redis).await?;
+
+        // The dev has never bought the token
+        if accs.is_empty() {
+            return Ok(true);
+        }
+
+        Ok(accs
+            .get(0)
+            .and_then(|acc| Some(acc.1.eq("0")))
+            .unwrap_or(false))
     }
 }
 
 impl SolRpcApi for Client {
     fn rpc(&self) -> &Arc<RpcClient> {
         &self.rpc
+    }
+
+    fn helius(&self) -> &Arc<RpcClient> {
+        &self.helius
     }
 }
 

@@ -33,10 +33,9 @@ impl<'t> ToRedisArgs for TaskCache<'t> {
         W: ?Sized + redis::RedisWrite,
     {
         match self {
-            Self::DevSoldOut(mint) => mint.write_redis_args(out),
+            Self::DevSoldOut(mint) => format!("task::pump::soldout::{mint}").write_redis_args(out),
             Self::Top10Holder { mint, percent } => {
-                mint.write_redis_args(out);
-                percent.write_redis_args(out);
+                format!("task::pump::holders::{mint}::{percent}").write_redis_args(out)
             }
         }
     }

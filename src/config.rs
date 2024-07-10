@@ -29,6 +29,8 @@ impl Config {
 /// Solana cluster
 #[derive(Serialize, Deserialize)]
 pub struct Cluster {
+    /// Helius API for advanced usages
+    pub helius: Url,
     /// http rpc url
     pub http: Url,
     /// websocket rpc url

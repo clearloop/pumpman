@@ -1,7 +1,7 @@
 //! Apis
 
 use crate::{
-    model::pump::Coin,
+    model::{pump::Coin, DexScreenerPair},
     utils::{DAY, THOURS},
 };
 use anyhow::Result;
@@ -32,15 +32,14 @@ pub trait HttpClient {
         uri: &str,
         force: bool,
         exp: u64,
-        con: &mut Connection,
+        redis: &mut Connection,
     ) -> Result<T> {
-        let mbv = con.get(uri);
-        let text = if mbv.is_err() || force {
+        let text = if !redis.exists(uri)? || force {
             let text = self.client().get(uri).send().await?.text().await?;
-            con.set_ex(uri, &text, exp)?;
+            redis.set_ex(uri, &text, exp)?;
             text
         } else {
-            mbv?
+            redis.get(uri)?
         };
 
         serde_json::from_str(&text).map_err(Into::into)
@@ -48,26 +47,32 @@ pub trait HttpClient {
 
     /// get coin of pump fun
     async fn coin(&self, mint: &str, update: bool, con: &mut Connection) -> Result<Coin> {
-        self.cget(&PumpApi::coin(mint), update, DAY, con).await
+        self.cget(&PumpApi::coin(mint), update, DAY, con)
+            .await
+            .map_err(|e| {
+                tracing::error!("Failed to get pump coin {mint}: {e}");
+                e
+            })
     }
 
-    /// dexscreener tokens
-    async fn tokens(
+    /// dexscreener pairs
+    async fn pairs(
         &self,
         mint: &str,
         update: bool,
         con: &mut Connection,
-    ) -> Result<DexScreenerTokensResult> {
-        self.cget(&DexScreenerApi::tokens(mint), update, THOURS, con)
-            .await
+    ) -> Result<Vec<DexScreenerPair>> {
+        let tokens: DexScreenerTokensResult = self
+            .cget(&DexScreenerApi::tokens(mint), update, THOURS, con)
+            .await?;
+        Ok(tokens.pairs.unwrap_or_default())
     }
 
     /// Get dexscreener url
     async fn pair(&self, mint: &str, update: bool, con: &mut Connection) -> Option<String> {
-        self.tokens(mint, update, con)
+        self.pairs(mint, update, con)
             .await
             .ok()?
-            .pairs?
             .first()
             .map(|p| p.url.clone())
     }
