@@ -60,6 +60,7 @@ impl Alert {
             &self.to_string(),
         )
         .parse_mode(ParseMode::MarkdownV2)
+        // .reply_markup(value)
         // .disable_web_page_preview(true)
         .await
         .map_err(Into::into)
@@ -92,6 +93,12 @@ impl Display for Alert {
             self.holders.len(),
             self.soldout,
         );
+
+        let count = if count == 19 {
+            "> 20".escaped()
+        } else {
+            format!("{count}")
+        };
 
         write!(
             f,

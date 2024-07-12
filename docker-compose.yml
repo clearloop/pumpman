@@ -1,4 +1,3 @@
-version: "3.8"
 services:
   postgres:
     image: postgres:16
@@ -15,9 +14,9 @@ services:
     volumes:
       - /opt/replika/cache:/data
   replika:
-    image: docker.io/clearloop/replika:latest
+    image: docker.io/clearloop/takeover:latest
     restart: on-failure
-    command: ["-c", "/etc/replika/replika.toml", "-vv"]
+    command: ["-c", "/etc/replika/replika.toml", "-v"]
     depends_on:
       - postgres
       - redis

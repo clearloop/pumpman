@@ -76,9 +76,10 @@ impl PumpSub {
 
             if let Some(event) = sol::parse::<events::TradeEvent>(&resp.value.logs) {
                 self.handle_trade(event, postgres, redis).await?;
-                continue;
             }
 
+            // TODO: handle events of new created tokens
+            //
             // if let Some(event) = sol::parse::<sol::pump::events::CompleteEvent>(&resp.value.logs) {
             //     tracing::trace!("{event:?}");
             //     self.handle_complete(event, postgres, redis).await?;
@@ -91,11 +92,13 @@ impl PumpSub {
                     .await?;
             }
 
-            if !self.holders.is_empty() {
-                self.tx
-                    .send(PumpEvent::HoldersChanged(self.holders.drain().collect()).into())
-                    .await?;
-            }
+            // NOTE: pause the holders notification
+            //
+            // if !self.holders.is_empty() {
+            //     self.tx
+            //         .send(PumpEvent::HoldersChanged(self.holders.drain().collect()).into())
+            //         .await?;
+            // }
         }
 
         Ok(())

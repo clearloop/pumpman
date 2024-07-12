@@ -47,7 +47,7 @@ pub trait SolRpcApi {
             bitcode::deserialize(&holders)?
         };
 
-        Ok(holders.into())
+        Ok(holders)
     }
 
     /// Get toekn account
@@ -151,6 +151,7 @@ impl From<Vec<RpcTokenAccountBalance>> for Holders {
     fn from(v: Vec<RpcTokenAccountBalance>) -> Self {
         Self(
             v.into_iter()
+                .filter(|b| b.amount.ui_amount_string != "0")
                 .map(|b| (b.address, b.amount.ui_amount_string))
                 .collect(),
         )

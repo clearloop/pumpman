@@ -76,10 +76,6 @@ impl Processor {
                 .await?
                 .skip_bc(&coin.associated_bonding_curve);
 
-            if holders.len() < 11 {
-                return Ok(());
-            }
-
             let coin = client.coin(&mint, true, redis).await?;
             let pairs = client.pairs(&mint, false, redis).await?;
 
@@ -109,14 +105,12 @@ impl Processor {
 
             // check if the user is dev
             let coin = client.coin(&mint, false, redis).await?;
-
-            // check if holders reach threshold
             let holders = client
                 .top_holders(&mint, true, redis)
                 .await?
                 .skip_bc(&coin.associated_bonding_curve);
 
-            if holders.len() < 11 {
+            if holders.len() < 5 {
                 return Ok(());
             }
 
