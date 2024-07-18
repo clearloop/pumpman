@@ -14,8 +14,11 @@ use {command::Command, state::State};
 
 mod callback;
 mod command;
+mod context;
+mod group;
 mod markup;
 mod message;
+mod result;
 mod state;
 
 type TakeoverDialogue = Dialogue<State, ErasedStorage<State>>;
@@ -38,10 +41,16 @@ pub async fn start(takeover: &str, context: Context, redis: String) -> anyhow::R
         .branch(case![State::ReceiveCtoAddress(takeover)].endpoint(state::token))
         .branch(dptree::endpoint(state::invalid));
 
+    let group = Update::filter_message()
+        .filter(|msg: Message| msg.chat.is_group())
+        .filter_command::<Command>()
+        .branch(dptree::endpoint(group::unsupport));
+
     let callback =
         Update::filter_callback_query().branch(case![State::Start].endpoint(callback::takeover));
 
     let schema = dialogue::enter::<Update, ErasedStorage<State>, State, _>()
+        .branch(group)
         .branch(message)
         .branch(callback);
 

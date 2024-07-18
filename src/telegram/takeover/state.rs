@@ -78,12 +78,9 @@ pub async fn token(
     }
 
     takeover.telegram = handle;
-    takeover.admin = telegram::uid(&msg)
-        .ok_or(anyhow!("Takeover action running in group"))?
-        .to_string();
+    takeover.admin = telegram::uid(&msg)?.to_string();
 
     takeover.write(&context)?;
-
     bot.send_message(msg.chat.id, "All set up!".to_string())
         .await?;
     dialogue.exit().await?;

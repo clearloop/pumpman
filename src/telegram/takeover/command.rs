@@ -1,6 +1,12 @@
 //! Takeover commands
 
-use crate::telegram::takeover::{markup, state::State, Result, TakeoverDialogue};
+use crate::{
+    context::Context,
+    telegram::{
+        self,
+        takeover::{markup, state::State, Result, TakeoverDialogue},
+    },
+};
 use teloxide::{payloads::SendMessageSetters, prelude::*, utils::command::BotCommands};
 
 use super::message;
@@ -44,7 +50,18 @@ pub async fn cancel(bot: Bot, dialogue: TakeoverDialogue, msg: Message) -> Resul
 }
 
 /// Command takeover
-pub async fn takeover(bot: Bot, dialogue: TakeoverDialogue, msg: Message) -> Result<()> {
+pub async fn takeover(
+    bot: Bot,
+    context: Context,
+    dialogue: TakeoverDialogue,
+    msg: Message,
+) -> Result<()> {
+    if !context.eligible(telegram::uid(&msg)?)? {
+        bot.send_message(msg.chat.id, message::INSUFFICIENT_CREDITS)
+            .await?;
+        return Ok(());
+    }
+
     bot.send_message(msg.chat.id, message::TAKEOVER).await?;
     dialogue.update(State::ReceiveCto).await?;
     Ok(())
