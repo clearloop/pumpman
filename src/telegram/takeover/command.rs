@@ -2,10 +2,7 @@
 
 use crate::{
     context::Context,
-    telegram::{
-        self,
-        takeover::{markup, state::State, Result, TakeoverDialogue},
-    },
+    telegram::takeover::{markup, state::State, Result, TakeoverDialogue},
 };
 use teloxide::{payloads::SendMessageSetters, prelude::*, utils::command::BotCommands};
 
@@ -56,7 +53,7 @@ pub async fn takeover(
     dialogue: TakeoverDialogue,
     msg: Message,
 ) -> Result<()> {
-    if !context.eligible(telegram::uid(&msg)?)? {
+    if !context.eligible(&msg.chat.id.0.to_string())? {
         bot.send_message(msg.chat.id, message::INSUFFICIENT_CREDITS)
             .await?;
         return Ok(());

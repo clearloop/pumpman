@@ -10,7 +10,6 @@ pub async fn takeover(
     dialogue: TakeoverDialogue,
     q: CallbackQuery,
 ) -> Result<()> {
-    tracing::trace!("Message enter callback");
     let Some(msg) = q.message else {
         return Ok(());
     };

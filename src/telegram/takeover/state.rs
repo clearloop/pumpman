@@ -3,11 +3,10 @@ use crate::{
     context::Context,
     model::Takeover,
     telegram::{
-        self, keyboard,
+        keyboard,
         takeover::{markup, message, Result, TakeoverDialogue},
     },
 };
-use anyhow::anyhow;
 use serde::{Deserialize, Serialize};
 use solana_sdk::pubkey::Pubkey;
 use std::str::FromStr;
@@ -78,9 +77,9 @@ pub async fn token(
     }
 
     takeover.telegram = handle;
-    takeover.admin = telegram::uid(&msg)?.to_string();
-
+    takeover.admin = msg.chat.id.0.to_string();
     takeover.write(&context)?;
+
     bot.send_message(msg.chat.id, "All set up!".to_string())
         .await?;
     dialogue.exit().await?;
