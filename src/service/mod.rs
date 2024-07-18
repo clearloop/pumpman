@@ -19,7 +19,7 @@ pub enum Event {
 }
 
 /// Start all service
-pub async fn start(config: &Config, context: Arc<Context>) -> Result<()> {
+pub async fn start(config: &Config, context: Context) -> Result<()> {
     let (tx, rx) = mpsc::channel::<Event>(50);
     let mut pumpsub = PumpSub::new(&config, context.clone(), tx).await?;
     let mut processor = Processor::new(
@@ -37,7 +37,7 @@ pub async fn start(config: &Config, context: Arc<Context>) -> Result<()> {
     tokio::select! {
         r = signal::ctrl_c() => r.map_err(Into::into),
         r = takeover_future => r,
-        r = pumpsub.start() => r,
-        r = processor.start() => r
+        // r = pumpsub.start() => r,
+        // r = processor.start() => r
     }
 }

@@ -15,6 +15,7 @@ use {command::Command, state::State};
 mod callback;
 mod command;
 mod markup;
+mod message;
 mod state;
 
 type TakeoverDialogue = Dialogue<State, ErasedStorage<State>>;
@@ -22,11 +23,10 @@ type TakeoverStorage = Arc<ErasedStorage<State>>;
 type Result<T> = core::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
 
 /// Start the takeover bot
-pub async fn start(takeover: &str, context: Arc<Context>, redis: String) -> anyhow::Result<()> {
-    tracing::info!("Starting the takeover bot");
+pub async fn start(takeover: &str, context: Context, redis: String) -> anyhow::Result<()> {
+    tracing::info!("Starting the takeover bot ...");
 
     let bot = Bot::new(takeover);
-    let cache: TakeoverStorage = RedisStorage::open(redis, Json).await?.erase();
     let command = teloxide::filter_command::<Command, _>()
         .branch(case![State::Start].branch(case![Command::Takeover].endpoint(command::takeover)))
         .branch(case![Command::Start].endpoint(command::start))
@@ -34,9 +34,9 @@ pub async fn start(takeover: &str, context: Arc<Context>, redis: String) -> anyh
 
     let message = Update::filter_message()
         .branch(command)
-        .branch(case![State::ReceiveCto].endpoint(state::receive_cto))
-        .branch(case![State::ReceiveCtoAddress(takeover)].endpoint(state::receive_cto_address))
-        .branch(dptree::endpoint(invalid_state));
+        .branch(case![State::ReceiveCto].endpoint(state::cto))
+        .branch(case![State::ReceiveCtoAddress(takeover)].endpoint(state::token))
+        .branch(dptree::endpoint(state::invalid));
 
     let callback =
         Update::filter_callback_query().branch(case![State::Start].endpoint(callback::takeover));
@@ -45,22 +45,11 @@ pub async fn start(takeover: &str, context: Arc<Context>, redis: String) -> anyh
         .branch(message)
         .branch(callback);
 
-    bot.set_chat_menu_button()
-        .menu_button(MenuButton::Commands)
-        // .menu_button(MenuButton::WebApp {
-        //     text: "takeover".into(),
-        //     web_app: WebAppInfo {
-        //         url: "https://takeover.fyi".parse()?,
-        //     },
-        // })
-        .await?;
-    bot.set_my_commands(Command::bot_commands().into_iter().collect::<Vec<_>>())
-        .await?;
-    bot.get_updates().timeout(60).await?;
+    settings(&bot).await?;
 
-    // dispatching
+    let cache: TakeoverStorage = RedisStorage::open(redis, Json).await?.erase();
     Dispatcher::builder(bot.clone(), schema)
-        .dependencies(dptree::deps![context.clone(), cache])
+        .dependencies(dptree::deps![context, cache])
         .enable_ctrlc_handler()
         .build()
         .dispatch()
@@ -69,12 +58,13 @@ pub async fn start(takeover: &str, context: Arc<Context>, redis: String) -> anyh
     Ok(())
 }
 
-async fn invalid_state(bot: Bot, msg: Message) -> Result<()> {
-    tracing::warn!("{msg:#?}");
-    bot.send_message(
-        msg.chat.id,
-        "Unable to handle the message. Type /start to see the usage.",
-    )
-    .await?;
+async fn settings(bot: &Bot) -> anyhow::Result<()> {
+    bot.set_chat_menu_button()
+        .menu_button(MenuButton::Commands)
+        .await?;
+    bot.set_my_commands(Command::bot_commands().into_iter().collect::<Vec<_>>())
+        .await?;
+    bot.get_updates().timeout(60).await?;
+
     Ok(())
 }

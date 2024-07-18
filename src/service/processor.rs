@@ -18,12 +18,12 @@ use tokio::{sync::mpsc::Receiver, time::sleep};
 pub struct Processor {
     channel: String,
     reporter: Bot,
-    context: Arc<Context>,
+    context: Context,
     rx: Receiver<Event>,
 }
 
 impl Processor {
-    pub fn new(channel: String, reporter: Bot, context: Arc<Context>, rx: Receiver<Event>) -> Self {
+    pub fn new(channel: String, reporter: Bot, context: Context, rx: Receiver<Event>) -> Self {
         Self {
             channel,
             reporter,

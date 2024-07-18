@@ -2,14 +2,12 @@ use crate::{
     api::HttpClient,
     context::Context,
     model::Takeover,
-    schema::takeovers,
     telegram::{
         self, keyboard,
-        takeover::{markup, Result, TakeoverDialogue},
+        takeover::{markup, message, Result, TakeoverDialogue},
     },
 };
 use anyhow::anyhow;
-use diesel::RunQueryDsl;
 use serde::{Deserialize, Serialize};
 use solana_sdk::pubkey::Pubkey;
 use std::str::FromStr;
@@ -24,16 +22,15 @@ pub enum State {
     ReceiveCtoTelegramGroup(Takeover),
 }
 
-pub async fn receive_cto(
+pub async fn cto(
     bot: Bot,
     context: Context,
     dialogue: TakeoverDialogue,
     msg: Message,
 ) -> Result<()> {
-    tracing::trace!("Received CTO requested");
     let mint = msg.text().unwrap_or_default().to_string();
     if Pubkey::from_str(&mint).is_err() {
-        bot.send_message(msg.chat.id, "Invalid solana token address.")
+        bot.send_message(msg.chat.id, message::INVALID_ADDRESS)
             .reply_markup(markup::website("See exists CTOs")?)
             .await?;
 
@@ -47,54 +44,26 @@ pub async fn receive_cto(
         .await
         .map_err(|e| tracing::error!("{e}"))
     else {
-        bot.send_message(
-            msg.chat.id,
-            r#"
-Failed to get token metadata, re-input the token address to retry.
-
-If you believe this is a bug, please contact our dev @takeoverfyi
-"#,
-        )
-        .await?;
+        bot.send_message(msg.chat.id, message::NO_METADATA).await?;
         return Ok(());
     };
 
-    bot.send_message(
-        msg.chat.id,
-        format!(
-            r#"
-${} \- {} 
-```copy
-{}
-```
-"#,
-            coin.symbol, coin.name, coin.mint,
-        ),
-    )
-    .parse_mode(ParseMode::MarkdownV2)
-    .reply_markup(keyboard::coin(
-        &mint,
-        context.client.pair(&mint, false, redis).await,
-    )?)
-    .await?;
+    bot.send_message(msg.chat.id, message::coin(&coin, &context).await?)
+        .parse_mode(ParseMode::MarkdownV2)
+        .reply_markup(keyboard::coin(
+            &mint,
+            context.client.pair(&mint, false, redis).await,
+        )?)
+        .await?;
 
-    bot.send_message(
-        msg.chat.id,
-        r#"
-Almost done! Please enter the telegram group handle of your community.
-    
-for example: @takeoverfyi
-"#,
-    )
-    .await?;
-
+    bot.send_message(msg.chat.id, message::INPUT_HANDLE).await?;
     dialogue
         .update(State::ReceiveCtoAddress(Takeover::new(mint)))
         .await?;
     Ok(())
 }
 
-pub async fn receive_cto_address(
+pub async fn token(
     bot: Bot,
     context: Context,
     dialogue: TakeoverDialogue,
@@ -113,24 +82,15 @@ pub async fn receive_cto_address(
         .ok_or(anyhow!("Takeover action running in group"))?
         .to_string();
 
-    diesel::insert_into(takeovers::table)
-        .values(takeover)
-        .execute(&mut context.postgres()?)?;
+    takeover.write(&context)?;
 
-    // TODO: forward a message from alerts to user
-    bot.send_message(
-        msg.chat.id,
-        "All set up! Your community page is https://symbol.takeover.fyi".to_string(),
-    )
-    // .reply_markup(ReplyMarkup::InlineKeyboard(InlineKeyboardMarkup {
-    //     inline_keyboard: vec![vec![InlineKeyboardButton {
-    //         text: "Share to my community!".to_string(),
-    //         kind: InlineKeyboardButtonKind::WebApp(WebAppInfo {
-    //             url: "https://symbol.takeover.fyi".parse()?,
-    //         }),
-    //     }]],
-    // }))
-    .await?;
+    bot.send_message(msg.chat.id, "All set up!".to_string())
+        .await?;
     dialogue.exit().await?;
+    Ok(())
+}
+
+pub async fn invalid(bot: Bot, msg: Message) -> Result<()> {
+    bot.send_message(msg.chat.id, message::INVALID).await?;
     Ok(())
 }

@@ -3,6 +3,8 @@
 use crate::telegram::takeover::{markup, state::State, Result, TakeoverDialogue};
 use teloxide::{payloads::SendMessageSetters, prelude::*, utils::command::BotCommands};
 
+use super::message;
+
 #[derive(BotCommands, Clone)]
 #[command(
     rename_rule = "lowercase",
@@ -24,46 +26,26 @@ pub enum Command {
 pub async fn start(bot: Bot, dialogue: TakeoverDialogue, msg: Message) -> Result<()> {
     dialogue.exit().await?;
     if !msg.chat.id.is_user() {
-        bot.send_message(
-            msg.chat.id,
-            r#"
-Building better CTOs, feedbacks and ideas are welcome! @takeoverfyi
-
-Only support private chats atm )) 
-"#,
-        )
-        .await?;
+        bot.send_message(msg.chat.id, message::ENTER_GROUP).await?;
         return Ok(());
     }
 
-    bot.send_message(
-        msg.chat.id,
-        "Building better CTOs, feedbacks and ideas are welcome! @takeoverfyi",
-    )
-    .reply_markup(markup::menu()?)
-    .await?;
+    bot.send_message(msg.chat.id, message::BRANDING)
+        .reply_markup(markup::menu()?)
+        .await?;
     Ok(())
 }
 
 /// Command cancel
 pub async fn cancel(bot: Bot, dialogue: TakeoverDialogue, msg: Message) -> Result<()> {
-    bot.send_message(
-        msg.chat.id,
-        "Cancelling the dialogue. Type /start to see the menu.",
-    )
-    .await?;
+    bot.send_message(msg.chat.id, message::CANCEL).await?;
     dialogue.exit().await?;
     Ok(())
 }
 
 /// Command takeover
 pub async fn takeover(bot: Bot, dialogue: TakeoverDialogue, msg: Message) -> Result<()> {
-    bot.send_message(
-        msg.chat.id,
-        "Let's start! Which token your community are about to take over?",
-    )
-    .await?;
-
+    bot.send_message(msg.chat.id, message::TAKEOVER).await?;
     dialogue.update(State::ReceiveCto).await?;
     Ok(())
 }
