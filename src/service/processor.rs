@@ -76,7 +76,7 @@ impl Processor {
                 .await?
                 .skip_bc(&coin.associated_bonding_curve);
 
-            if holders.len() < 5 {
+            if holders.len() < 15 {
                 continue;
             }
 

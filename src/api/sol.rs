@@ -116,19 +116,15 @@ const TOTAL_SUPPLY: u64 = 1_000_000_000;
 pub struct Holders(Vec<(String, String)>);
 
 impl Holders {
-    pub fn top10percent(&self) -> Result<BigDecimal> {
+    pub fn percent(&self) -> Result<BigDecimal> {
         let total = BigDecimal::from(TOTAL_SUPPLY);
-        let present = if self.len() > 10 {
-            &self.0[..10]
-        } else {
-            &self.0
-        }
-        .iter()
-        .map(|acc| BigDecimal::from_str(&acc.1).map_err(Into::into))
-        .collect::<Result<Vec<_>>>()?
-        .into_iter()
-        .reduce(|cur, acc| acc + cur)
-        .unwrap_or_default();
+        let present = self
+            .iter()
+            .map(|acc| BigDecimal::from_str(&acc.1).map_err(Into::into))
+            .collect::<Result<Vec<_>>>()?
+            .into_iter()
+            .reduce(|cur, acc| acc + cur)
+            .unwrap_or_default();
 
         Ok((present / total * 100u32).round(2))
     }

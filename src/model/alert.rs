@@ -71,7 +71,7 @@ impl Display for Alert {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let percent = self
             .holders
-            .top10percent()
+            .percent()
             .unwrap_or_default()
             .to_string()
             .escaped();
@@ -108,7 +108,7 @@ impl Display for Alert {
 \- dev wallet sold out: {soldout}
 \- market cap: ${mc}k
 \- holders count: {count}
-\- top10 holders HODL: {percent}%
+\- top 20 holders HODL: {percent}%
 \- listed on dex: {dex}
 {socials}
 ```copy
