@@ -49,7 +49,6 @@ impl Context {
         let coin = Coin::from(coin);
         let postgres = &mut self.postgres()?;
 
-        tracing::debug!("{:?}", &coin);
         diesel::insert_into(coins::table)
             .values(coin.clone())
             .on_conflict(coins::mint)

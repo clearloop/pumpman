@@ -81,7 +81,7 @@ async fn settings(bot: &Bot) -> anyhow::Result<()> {
         .await?;
     bot.set_my_commands(Command::bot_commands().into_iter().collect::<Vec<_>>())
         .await?;
-    bot.get_updates().timeout(60).await?;
+    // bot.get_updates().timeout(60).await?;
 
     Ok(())
 }
