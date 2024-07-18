@@ -33,7 +33,7 @@ pub trait SolRpcApi {
             let holders: Holders = self
                 .helius()
                 .get_token_largest_accounts_with_commitment(
-                    &Pubkey::from_str(&mint)?,
+                    &Pubkey::from_str(mint)?,
                     CommitmentConfig::finalized(),
                 )
                 .await?
@@ -62,7 +62,7 @@ pub trait SolRpcApi {
         let accs = if update || !redis.exists(&key)? {
             let accs = self
                 .rpc()
-                .get_token_accounts_by_owner(&acc, TokenAccountsFilter::Mint(mint))
+                .get_token_accounts_by_owner(acc, TokenAccountsFilter::Mint(mint))
                 .await?;
 
             let accs = sol::parse_token_accounts(accs)?;

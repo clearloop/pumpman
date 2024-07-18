@@ -48,10 +48,7 @@ impl Client {
             return Ok(true);
         }
 
-        Ok(accs
-            .get(0)
-            .and_then(|acc| Some(acc.1.eq("0")))
-            .unwrap_or(false))
+        Ok(accs.first().map(|acc| acc.1.eq("0")).unwrap_or(false))
     }
 }
 

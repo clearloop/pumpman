@@ -21,7 +21,7 @@ pub enum Event {
 /// Start all service
 pub async fn start(config: &Config, context: Context) -> Result<()> {
     let (tx, rx) = mpsc::channel::<Event>(50);
-    let mut pumpsub = PumpSub::new(&config, context.clone(), tx).await?;
+    let mut pumpsub = PumpSub::new(config, context.clone(), tx).await?;
     let mut processor = Processor::new(
         config.telegram.takeover_alerts.clone(),
         Bot::new(config.telegram.takeover_alerts_bot.clone()),

@@ -47,7 +47,7 @@ impl PumpSub {
         tracing::trace!("Starting pubsub service ...");
         Ok(Self {
             context,
-            pubsub: Rc::new(PubsubClient::new(&config.cluster.ws.to_string()).await?),
+            pubsub: Rc::new(PubsubClient::new(config.cluster.ws.as_ref()).await?),
             soldout: Default::default(),
             holders: Default::default(),
             tx,
