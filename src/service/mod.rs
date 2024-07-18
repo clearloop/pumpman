@@ -37,7 +37,7 @@ pub async fn start(config: &Config, context: Context) -> Result<()> {
     tokio::select! {
         r = signal::ctrl_c() => r.map_err(Into::into),
         r = takeover_future => r,
-        // r = pumpsub.start() => r,
-        // r = processor.start() => r
+        r = pumpsub.start() => r,
+        r = processor.start() => r
     }
 }
