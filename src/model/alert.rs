@@ -121,6 +121,7 @@ impl Display for Alert {
 
 /// Title of message alert
 pub enum AlertTitle {
+    ClaimCTO,
     DevSoldOut,
     HoldersChanged(u8),
 }
@@ -131,6 +132,7 @@ impl Display for AlertTitle {
             f,
             "{}",
             match self {
+                Self::ClaimCTO => "Claim CTO".into(),
                 Self::DevSoldOut => "Dev Soldout".into(),
                 Self::HoldersChanged(threshold) => format!("Top 10 HODL under {threshold}%"),
             }

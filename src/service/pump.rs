@@ -30,7 +30,7 @@ use tokio::sync::mpsc::Sender;
 /// Solana subscriber
 pub struct PumpSub {
     /// Service context
-    context: Arc<Context>,
+    context: Context,
     /// Solana pubsub client
     pubsub: Rc<PubsubClient>,
     /// Queue for checking soldout
@@ -43,11 +43,11 @@ pub struct PumpSub {
 
 impl PumpSub {
     /// Create new pubsub
-    pub async fn new(config: &Config, context: Arc<Context>, tx: Sender<Event>) -> Result<Self> {
+    pub async fn new(config: &Config, context: Context, tx: Sender<Event>) -> Result<Self> {
         tracing::trace!("Starting pubsub service ...");
         Ok(Self {
             context,
-            pubsub: Rc::new(PubsubClient::new(&config.cluster.ws.to_string()).await?),
+            pubsub: Rc::new(PubsubClient::new(config.cluster.ws.as_ref()).await?),
             soldout: Default::default(),
             holders: Default::default(),
             tx,

@@ -1,5 +1,10 @@
 //! Community take over
-use crate::schema::takeovers;
+use crate::{
+    context::Context,
+    model::{Coin, User},
+    schema::{coins, takeovers, users},
+};
+use anyhow::Result;
 use async_graphql::SimpleObject;
 use diesel::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -48,5 +53,28 @@ impl Takeover {
             mint,
             ..Default::default()
         }
+    }
+
+    /// Write self into database
+    ///
+    /// 1. check if coin exists
+    /// 2. check if admin exists
+    /// 3. insert self
+    pub fn write(&self, context: &Context) -> Result<()> {
+        let postgres = &mut context.postgres()?;
+        diesel::insert_into(coins::table)
+            .values(Coin::new(self.mint.clone()))
+            .on_conflict_do_nothing()
+            .execute(postgres)?;
+
+        diesel::insert_into(users::table)
+            .values(User::new(self.admin.clone()))
+            .on_conflict_do_nothing()
+            .execute(postgres)?;
+
+        diesel::insert_into(takeovers::table)
+            .values(self)
+            .execute(postgres)?;
+        Ok(())
     }
 }

@@ -1,9 +1,10 @@
-use crate::schema::users;
+//! Community take over
+use crate::schema::coins;
 use async_graphql::SimpleObject;
 use diesel::prelude::*;
 use serde::{Deserialize, Serialize};
 
-/// Replika users
+/// Community take over information
 #[derive(
     SimpleObject,
     Insertable,
@@ -22,23 +23,20 @@ use serde::{Deserialize, Serialize};
     Ord,
     Hash,
 )]
-pub struct User {
+pub struct Coin {
     /// Sequence id
     #[diesel(deserialize_as = i64)]
     pub id: Option<i64>,
-    /// Telegram user id
-    pub tgid: String,
-    /// Credits this user has
-    pub credits: i64,
+    /// Mint address of this coin
+    pub mint: String,
 }
 
-impl User {
-    /// Create a new user
-    pub fn new(tgid: String) -> Self {
+impl Coin {
+    /// New community takeover
+    pub fn new(mint: String) -> Self {
         Self {
-            id: None,
-            tgid,
-            credits: 1,
+            mint,
+            ..Default::default()
         }
     }
 }

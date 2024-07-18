@@ -9,7 +9,7 @@ use crate::{
 use anyhow::Result;
 use clap::{Parser, Subcommand};
 use solana_sdk::pubkey::Pubkey;
-use std::{path::PathBuf, str::FromStr, sync::Arc};
+use std::{path::PathBuf, str::FromStr};
 
 /// Sub commands
 #[derive(Debug, Subcommand)]
@@ -59,19 +59,13 @@ impl Opt {
     /// Run commands
     pub async fn run(self) -> Result<()> {
         let config = Config::load(self.config)?;
-        let context = Arc::new(Context::new(&config)?);
+        let context = Context::new(&config)?;
 
         // pre-process
         context.init()?;
 
         let Some(command) = self.command else {
-            service::start(&config, context.clone()).await?;
-            let mut result = service::start(&config, context.clone()).await;
-            while let Err(e) = result {
-                tracing::error!("service broken: {e}");
-                result = service::start(&config, context.clone()).await;
-            }
-            return Ok(());
+            return service::start(&config, context.clone()).await;
         };
 
         // match commands
