@@ -1,10 +1,9 @@
 use std::fmt::Display;
-pub use takeover::TakeoverBot;
 use teloxide::{types::Message, utils::markdown};
 
 mod button;
 mod keyboard;
-mod takeover;
+pub mod takeover;
 
 /// Get the user id from message
 pub fn uid(msg: &Message) -> Option<u64> {
