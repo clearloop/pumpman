@@ -1,14 +1,9 @@
 use std::fmt::Display;
-use teloxide::{types::Message, utils::markdown};
+use teloxide::utils::markdown;
 
 mod button;
 mod keyboard;
 pub mod takeover;
-
-/// Get the user id from message
-pub fn uid(msg: &Message) -> Option<u64> {
-    msg.from().map(|u| u.id.0)
-}
 
 /// Escape to pattern markdown style
 pub trait Escape {

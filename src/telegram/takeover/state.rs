@@ -1,17 +1,20 @@
 use crate::{
     api::HttpClient,
     context::Context,
-    model::Takeover,
+    model::{Takeover, TakeoverWithCoin},
     telegram::{
-        self, keyboard,
+        keyboard,
         takeover::{markup, message, Result, TakeoverDialogue},
     },
 };
-use anyhow::anyhow;
 use serde::{Deserialize, Serialize};
 use solana_sdk::pubkey::Pubkey;
 use std::str::FromStr;
-use teloxide::{payloads::SendMessageSetters, prelude::*, types::ParseMode};
+use teloxide::{
+    payloads::SendMessageSetters,
+    prelude::*,
+    types::{ParseMode, ReplyMarkup},
+};
 
 #[derive(Clone, Default, Serialize, Deserialize)]
 pub enum State {
@@ -20,6 +23,7 @@ pub enum State {
     ReceiveCto,
     ReceiveCtoAddress(Takeover),
     ReceiveCtoTelegramGroup(Takeover),
+    Info(Vec<TakeoverWithCoin>),
 }
 
 pub async fn cto(
@@ -78,11 +82,8 @@ pub async fn token(
     }
 
     takeover.telegram = handle;
-    takeover.admin = telegram::uid(&msg)
-        .ok_or(anyhow!("Takeover action running in group"))?
-        .to_string();
-
-    takeover.write(&context)?;
+    takeover.admin = msg.chat.id.0.to_string();
+    takeover.write(&context).await?;
 
     bot.send_message(msg.chat.id, "All set up!".to_string())
         .await?;
@@ -90,7 +91,10 @@ pub async fn token(
     Ok(())
 }
 
-pub async fn invalid(bot: Bot, msg: Message) -> Result<()> {
-    bot.send_message(msg.chat.id, message::INVALID).await?;
+pub async fn invalid(bot: Bot, dialogue: TakeoverDialogue, msg: Message) -> Result<()> {
+    bot.send_message(msg.chat.id, message::INVALID)
+        .reply_markup(ReplyMarkup::kb_remove())
+        .await?;
+    dialogue.exit().await?;
     Ok(())
 }

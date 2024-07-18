@@ -14,8 +14,11 @@ use {command::Command, state::State};
 
 mod callback;
 mod command;
+mod context;
+mod group;
 mod markup;
 mod message;
+mod result;
 mod state;
 
 type TakeoverDialogue = Dialogue<State, ErasedStorage<State>>;
@@ -28,9 +31,16 @@ pub async fn start(takeover: &str, context: Context, redis: String) -> anyhow::R
 
     let bot = Bot::new(takeover);
     let command = teloxide::filter_command::<Command, _>()
-        .branch(case![State::Start].branch(case![Command::Takeover].endpoint(command::takeover)))
         .branch(case![Command::Start].endpoint(command::start))
-        .branch(case![Command::Cancel].endpoint(command::cancel));
+        .branch(case![Command::Cancel].endpoint(command::cancel))
+        .branch(case![Command::Info].endpoint(command::info))
+        .branch(case![Command::Inspect].endpoint(command::inspect))
+        .branch(case![Command::SetTwitter].endpoint(command::set_twitter))
+        .branch(case![Command::SetWebsite].endpoint(command::set_website))
+        .branch(case![Command::SetBanner].endpoint(command::set_banner))
+        .branch(case![Command::SetTelegram].endpoint(command::set_telegram))
+        .branch(case![Command::Takeover].endpoint(command::takeover))
+        .branch(dptree::endpoint(state::invalid));
 
     let message = Update::filter_message()
         .branch(command)
@@ -38,12 +48,19 @@ pub async fn start(takeover: &str, context: Context, redis: String) -> anyhow::R
         .branch(case![State::ReceiveCtoAddress(takeover)].endpoint(state::token))
         .branch(dptree::endpoint(state::invalid));
 
+    let group = Update::filter_message()
+        .filter(|msg: Message| msg.chat.is_group())
+        .filter_command::<Command>()
+        .branch(dptree::endpoint(group::unsupport));
+
     let callback =
         Update::filter_callback_query().branch(case![State::Start].endpoint(callback::takeover));
 
     let schema = dialogue::enter::<Update, ErasedStorage<State>, State, _>()
+        .branch(group)
         .branch(message)
-        .branch(callback);
+        .branch(callback)
+        .branch(dptree::endpoint(state::invalid));
 
     settings(&bot).await?;
 
@@ -64,7 +81,7 @@ async fn settings(bot: &Bot) -> anyhow::Result<()> {
         .await?;
     bot.set_my_commands(Command::bot_commands().into_iter().collect::<Vec<_>>())
         .await?;
-    bot.get_updates().timeout(60).await?;
+    // bot.get_updates().timeout(60).await?;
 
     Ok(())
 }

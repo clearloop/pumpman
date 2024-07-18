@@ -9,6 +9,6 @@ pub use {
     alert::{Alert, AlertTitle},
     coin::Coin,
     dex::DexScreenerPair,
-    takeover::Takeover,
+    takeover::{Takeover, TakeoverWithCoin},
     user::User,
 };

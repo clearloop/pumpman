@@ -4,6 +4,11 @@ diesel::table! {
     coins (id) {
         id -> Int8,
         mint -> Text,
+        name -> Text,
+        symbol -> Text,
+        telegram -> Nullable<Text>,
+        website -> Nullable<Text>,
+        twitter -> Nullable<Text>,
     }
 }
 

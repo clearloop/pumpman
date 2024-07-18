@@ -3,7 +3,8 @@
 use crate::{
     api::{HttpClient, SolRpcApi},
     context::{Context, TaskCache},
-    model::{Alert, AlertTitle},
+    model::{Alert, AlertTitle, Coin},
+    schema::coins,
     service::{Event, PumpEvent},
     utils::TTMINS,
 };
@@ -39,7 +40,6 @@ impl Processor {
             tracing::trace!("Received event: {event:?}");
             if let Err(e) = match event {
                 Event::Pump(PumpEvent::DevSoldout(mint)) => self.pump_soldout(mint).await,
-                Event::Pump(PumpEvent::HoldersChanged(holders)) => self.pump_holders(holders).await,
             } {
                 tracing::warn!("{e}");
                 sleep(Duration::from_secs(10)).await;
@@ -76,61 +76,19 @@ impl Processor {
                 .await?
                 .skip_bc(&coin.associated_bonding_curve);
 
+            if holders.len() < 5 {
+                continue;
+            }
+
             let coin = client.coin(&mint, true, redis).await?;
             let pairs = client.pairs(&mint, false, redis).await?;
 
+            self.context.update_coin(coin.clone())?;
             Alert::new(AlertTitle::DevSoldOut, coin, true)
                 .pairs(pairs)
                 .holders(holders)
                 .alert(&self.reporter, &self.channel)
                 .await?;
-            redis.set(key, true)?;
-        }
-
-        Ok(())
-    }
-
-    /// Handle holders change
-    async fn pump_holders(&self, holders: Vec<(String, u8)>) -> Result<()> {
-        let redis = &mut self.context.redis()?;
-        let client = self.context.client.clone();
-        for (mint, percent) in holders {
-            let key = TaskCache::Top10Holder {
-                mint: &mint,
-                percent,
-            };
-            if redis.exists(&key)? {
-                continue;
-            }
-
-            // check if the user is dev
-            let coin = client.coin(&mint, false, redis).await?;
-            let holders = client
-                .top_holders(&mint, true, redis)
-                .await?
-                .skip_bc(&coin.associated_bonding_curve);
-
-            if holders.len() < 5 {
-                return Ok(());
-            }
-
-            let cpercent = holders.top10percent()?;
-            if cpercent > percent.into() {
-                return Ok(());
-            }
-
-            let coin = client.coin(&mint, true, redis).await?;
-            let soldout = client
-                .soldout(&coin.mint, &coin.creator, false, redis)
-                .await?;
-            let pairs = client.pairs(&mint, false, redis).await?;
-
-            Alert::new(AlertTitle::HoldersChanged(percent), coin, soldout)
-                .pairs(pairs)
-                .holders(holders)
-                .alert(&self.reporter, &self.channel)
-                .await?;
-
             redis.set(key, true)?;
         }
 

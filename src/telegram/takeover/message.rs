@@ -8,7 +8,7 @@ use anyhow::Result;
 pub const INVALID_ADDRESS: &str = "Invalid solana token address.";
 
 pub const NO_METADATA: &str = r#"
-Failed to get token metadata, re-input the token address to retry.
+Failed to ge token metadata, re-input the token address to retry.
 
 If you believe this is a bug, please contact our dev @takeoverfyi
 "#;
@@ -40,6 +40,14 @@ Let's start! Which token your community are about to take over?
 pub const INVALID: &str = r#"
 Unable to handle the message. Type /start to see the usage.
 "#;
+
+pub const INSUFFICIENT_CREDITS: &str = r#"
+Does not have enough credits, ask for more @takeoverfyi
+"#;
+
+pub const CHOOSE_INFO: &str = r#"Choose a CTO you want to inspect info."#;
+
+pub const NO_CTOS: &str = r#"You currently have no CTOs, type /start to claim yours!"#;
 
 pub async fn coin(coin: &PumpCoin, context: &Context) -> Result<String> {
     let mint = &coin.mint;
