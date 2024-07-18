@@ -1,5 +1,5 @@
 ``` sh
-docker build -t clearloop/takeover . --platform=linux/arm64
+docker build -t clearloop/takeover . --platform=linux/amd64
 ```
 
 ``` sh
