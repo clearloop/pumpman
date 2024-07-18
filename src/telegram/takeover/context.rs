@@ -2,7 +2,8 @@
 
 use crate::{
     context::Context,
-    schema::{takeovers, users},
+    model::{pump, Coin, Takeover, TakeoverWithCoin},
+    schema::{coins, takeovers, users},
 };
 use anyhow::Result;
 use diesel::prelude::*;
@@ -25,5 +26,37 @@ impl Context {
             .unwrap_or(1);
 
         return Ok(credits > count);
+    }
+
+    /// List all takeovers from user id
+    pub fn takeovers(&self, uid: &str) -> Result<Vec<TakeoverWithCoin>> {
+        let postgres = &mut self.postgres()?;
+
+        takeovers::table
+            .inner_join(coins::table.on(coins::mint.eq(takeovers::mint)))
+            .filter(takeovers::admin.eq(uid))
+            .select((Coin::as_select(), Takeover::as_select()))
+            .load::<(Coin, Takeover)>(postgres)
+            .map(|i| {
+                i.into_iter()
+                    .map(|(coin, takeover)| TakeoverWithCoin { coin, takeover })
+                    .collect()
+            })
+            .map_err(Into::into)
+    }
+
+    pub fn update_coin(&self, coin: pump::Coin) -> Result<()> {
+        let coin = Coin::from(coin);
+        let postgres = &mut self.postgres()?;
+
+        tracing::debug!("{:?}", &coin);
+        diesel::insert_into(coins::table)
+            .values(coin.clone())
+            .on_conflict(coins::mint)
+            .do_update()
+            .set(coin)
+            .execute(postgres)?;
+
+        Ok(())
     }
 }

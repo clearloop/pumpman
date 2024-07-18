@@ -35,8 +35,6 @@ pub struct PumpSub {
     pubsub: Rc<PubsubClient>,
     /// Queue for checking soldout
     soldout: HashSet<String>,
-    /// Queue for checking holder changes
-    holders: HashSet<(String, u8)>,
     /// Pump event sender
     tx: Sender<Event>,
 }
@@ -49,7 +47,6 @@ impl PumpSub {
             context,
             pubsub: Rc::new(PubsubClient::new(config.cluster.ws.as_ref()).await?),
             soldout: Default::default(),
-            holders: Default::default(),
             tx,
         })
     }
@@ -91,14 +88,6 @@ impl PumpSub {
                     .send(PumpEvent::DevSoldout(self.soldout.drain().collect()).into())
                     .await?;
             }
-
-            // NOTE: pause the holders notification
-            //
-            // if !self.holders.is_empty() {
-            //     self.tx
-            //         .send(PumpEvent::HoldersChanged(self.holders.drain().collect()).into())
-            //         .await?;
-            // }
         }
 
         Ok(())
@@ -107,7 +96,6 @@ impl PumpSub {
     /// Handle trade event
     ///
     /// - subscribe dev soldout
-    /// - subscribe change of holders
     async fn handle_trade(
         &mut self,
         event: events::TradeEvent,
@@ -115,20 +103,11 @@ impl PumpSub {
         redis: &mut Connection,
     ) -> Result<()> {
         let mint = event.mint.to_string();
-        self.ensure_coin(&mint, postgres, redis)?;
 
         if !redis.exists(TaskCache::DevSoldOut(&mint))? {
             self.soldout.insert(mint.clone());
         }
 
-        if redis.exists(TaskCache::Top10Holder {
-            mint: &mint,
-            percent: 10,
-        })? {
-            return Ok(());
-        }
-
-        self.holders.insert((mint.clone(), 10));
         Ok(())
     }
 
@@ -140,27 +119,12 @@ impl PumpSub {
     ) -> Result<()> {
         Ok(())
     }
-
-    /// Ensure coin has been recorded in database
-    fn ensure_coin(&self, mint: &str, postgres: &mut Conn, redis: &mut Connection) -> Result<()> {
-        if !redis.exists(mint)? {
-            diesel::insert_into(coins::table)
-                .values(coins::mint.eq(mint.to_string()))
-                .on_conflict(coins::mint)
-                .do_nothing()
-                .execute(postgres)?;
-            redis.set_nx(mint, true)?;
-        }
-
-        Ok(())
-    }
 }
 
 /// Pumpfun events
 #[derive(Debug)]
 pub enum PumpEvent {
     DevSoldout(Vec<String>),
-    HoldersChanged(Vec<(String, u8)>),
 }
 
 impl From<PumpEvent> for Event {

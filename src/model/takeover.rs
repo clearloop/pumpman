@@ -1,5 +1,6 @@
 //! Community take over
 use crate::{
+    api::HttpClient,
     context::Context,
     model::{Coin, User},
     schema::{coins, takeovers, users},
@@ -60,10 +61,12 @@ impl Takeover {
     /// 1. check if coin exists
     /// 2. check if admin exists
     /// 3. insert self
-    pub fn write(&self, context: &Context) -> Result<()> {
+    pub async fn write(&self, context: &Context) -> Result<()> {
         let postgres = &mut context.postgres()?;
+        let redis = &mut context.redis()?;
+        let coin: Coin = context.client.coin(&self.mint, false, redis).await?.into();
         diesel::insert_into(coins::table)
-            .values(Coin::new(self.mint.clone()))
+            .values(coin)
             .on_conflict_do_nothing()
             .execute(postgres)?;
 
@@ -77,4 +80,10 @@ impl Takeover {
             .execute(postgres)?;
         Ok(())
     }
+}
+
+#[derive(Clone, Serialize, Deserialize, Debug)]
+pub struct TakeoverWithCoin {
+    pub takeover: Takeover,
+    pub coin: Coin,
 }

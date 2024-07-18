@@ -24,7 +24,6 @@ impl Redis {
 /// Redis task cache
 pub enum TaskCache<'t> {
     DevSoldOut(&'t str),
-    Top10Holder { mint: &'t str, percent: u8 },
 }
 
 impl<'t> ToRedisArgs for TaskCache<'t> {
@@ -34,9 +33,6 @@ impl<'t> ToRedisArgs for TaskCache<'t> {
     {
         match self {
             Self::DevSoldOut(mint) => format!("task::pump::soldout::{mint}").write_redis_args(out),
-            Self::Top10Holder { mint, percent } => {
-                format!("task::pump::holders::{mint}::{percent}").write_redis_args(out)
-            }
         }
     }
 }

@@ -45,6 +45,10 @@ pub const INSUFFICIENT_CREDITS: &str = r#"
 Does not have enough credits, ask for more @takeoverfyi
 "#;
 
+pub const CHOOSE_INFO: &str = r#"Choose a CTO you want to inspect info."#;
+
+pub const NO_CTOS: &str = r#"You currently have no CTOs, type /start to claim yours!"#;
+
 pub async fn coin(coin: &PumpCoin, context: &Context) -> Result<String> {
     let mint = &coin.mint;
     let redis = &mut context.redis()?;

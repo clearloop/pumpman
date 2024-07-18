@@ -31,9 +31,16 @@ pub async fn start(takeover: &str, context: Context, redis: String) -> anyhow::R
 
     let bot = Bot::new(takeover);
     let command = teloxide::filter_command::<Command, _>()
-        .branch(case![State::Start].branch(case![Command::Takeover].endpoint(command::takeover)))
         .branch(case![Command::Start].endpoint(command::start))
-        .branch(case![Command::Cancel].endpoint(command::cancel));
+        .branch(case![Command::Cancel].endpoint(command::cancel))
+        .branch(case![Command::Info].endpoint(command::info))
+        .branch(case![Command::Inspect].endpoint(command::inspect))
+        .branch(case![Command::SetTwitter].endpoint(command::set_twitter))
+        .branch(case![Command::SetWebsite].endpoint(command::set_website))
+        .branch(case![Command::SetBanner].endpoint(command::set_banner))
+        .branch(case![Command::SetTelegram].endpoint(command::set_telegram))
+        .branch(case![Command::Takeover].endpoint(command::takeover))
+        .branch(dptree::endpoint(state::invalid));
 
     let message = Update::filter_message()
         .branch(command)
@@ -52,7 +59,8 @@ pub async fn start(takeover: &str, context: Context, redis: String) -> anyhow::R
     let schema = dialogue::enter::<Update, ErasedStorage<State>, State, _>()
         .branch(group)
         .branch(message)
-        .branch(callback);
+        .branch(callback)
+        .branch(dptree::endpoint(state::invalid));
 
     settings(&bot).await?;
 
