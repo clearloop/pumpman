@@ -44,8 +44,6 @@ impl Processor {
                 tracing::warn!("{e}");
                 sleep(Duration::from_secs(10)).await;
             }
-
-            sleep(Duration::from_secs(1)).await;
         }
 
         Ok(())
@@ -63,10 +61,11 @@ impl Processor {
 
             // check if dev is soldout
             let coin = client.coin(&mint, false, redis).await?;
-            if !client
+            let soldout = client
                 .soldout(&coin.mint, &coin.creator, false, redis)
-                .await?
-            {
+                .await?;
+
+            if !soldout {
                 return Ok(());
             }
 
@@ -76,7 +75,7 @@ impl Processor {
                 .await?
                 .skip_bc(&coin.associated_bonding_curve);
 
-            if holders.len() < 10 {
+            if holders.len() < 5 {
                 continue;
             }
 

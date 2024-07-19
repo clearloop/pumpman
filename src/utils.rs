@@ -7,6 +7,9 @@ pub const THOURS: u64 = 12800;
 // 30mins
 pub const TTMINS: u64 = 1800;
 
+// 30mins
+pub const FIVE_SECS: u64 = 5;
+
 pub mod base64 {
     use anyhow::Result;
     use base64::{engine::general_purpose::STANDARD, Engine as _};

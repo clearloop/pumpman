@@ -20,18 +20,16 @@ pub enum Event {
 
 /// Start all service
 pub async fn start(config: &Config, context: Context) -> Result<()> {
-    let (tx, rx) = mpsc::channel::<Event>(50);
-    let mut pumpsub = PumpSub::new(config, context.clone(), tx).await?;
-    let mut processor = Processor::new(
-        config.telegram.takeover_alerts.clone(),
-        Bot::new(config.telegram.takeover_alerts_bot.clone()),
-        context.clone(),
-        rx,
-    );
-
-    // let services =
-
     loop {
+        let (tx, rx) = mpsc::channel::<Event>(50);
+        let mut pumpsub = PumpSub::new(config, context.clone(), tx).await?;
+        let mut processor = Processor::new(
+            config.telegram.takeover_alerts.clone(),
+            Bot::new(config.telegram.takeover_alerts_bot.clone()),
+            context.clone(),
+            rx,
+        );
+
         let takeover_future = takeover::start(
             &config.telegram.takeover_bot,
             context.clone(),
