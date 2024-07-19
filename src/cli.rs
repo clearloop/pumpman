@@ -114,7 +114,7 @@ impl Opt {
 
                 println!(
                     "{}",
-                    Alert::new(AlertTitle::DevSoldOut, coin, soldout)
+                    Alert::new(AlertTitle::DevSoldOut, coin, soldout.1)
                         .pairs(pairs)
                         .holders(holders)
                 );

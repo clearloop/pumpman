@@ -50,7 +50,7 @@ impl Client {
 
         Ok(accs
             .first()
-            .map(|acc| (acc.0.clone(), acc.1.eq("0")))
+            .map(|acc| (acc.0.clone(), acc.1.starts_with("0")))
             .unwrap_or((acc.to_string(), false)))
     }
 }

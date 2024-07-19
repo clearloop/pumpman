@@ -62,7 +62,7 @@ pub async fn coin(coin: &PumpCoin, context: &Context) -> Result<String> {
         .client
         .soldout(mint, &coin.creator, false, redis)
         .await?;
-    let alert = Alert::new(AlertTitle::ClaimCTO, coin.clone(), soldout)
+    let alert = Alert::new(AlertTitle::ClaimCTO, coin.clone(), soldout.1)
         .pairs(pairs)
         .holders(holders);
 
