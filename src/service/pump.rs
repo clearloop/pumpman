@@ -20,6 +20,7 @@ use solana_client::{
 use solana_sdk::commitment_config::CommitmentConfig;
 use std::{
     collections::HashSet,
+    ops::Sub,
     rc::Rc,
     str::FromStr,
     sync::Arc,
@@ -83,10 +84,12 @@ impl PumpSub {
             // }
 
             // Send changes to receiver
-            if !self.soldout.is_empty() {
+            let elapsed = last.elapsed()?.as_secs();
+            if !self.soldout.is_empty() && elapsed > 15 {
                 self.tx
                     .send(PumpEvent::DevSoldout(self.soldout.drain().collect()).into())
                     .await?;
+                last = SystemTime::now();
             }
         }
 
