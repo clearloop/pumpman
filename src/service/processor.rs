@@ -72,7 +72,7 @@ impl Processor {
         // filter out mc less than $8k
         let coin = client.coin(&mint, false, redis).await?;
         if let Some(mc) = &coin.usd_market_cap {
-            if *mc < BigDecimal::from(8000) {
+            if *mc < BigDecimal::from(7000) {
                 return Ok(());
             }
         }
@@ -97,8 +97,13 @@ impl Processor {
         }
 
         let coin = client.coin(&mint, true, redis).await?;
-        let pairs = client.pairs(&mint, false, redis).await?;
+        if let Some(mc) = &coin.usd_market_cap {
+            if *mc < BigDecimal::from(7000) {
+                return Ok(());
+            }
+        }
 
+        let pairs = client.pairs(&mint, false, redis).await?;
         self.context.update_coin(coin.clone())?;
         Alert::new(AlertTitle::DevSoldOut, coin, soldout)
             .pairs(pairs)

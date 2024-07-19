@@ -83,7 +83,7 @@ impl PumpSub {
             // }
 
             // Send changes to receiver
-            if self.soldout.len() > 5 {
+            if self.soldout.len() > 10 {
                 self.tx
                     .send(PumpEvent::DevSoldout(self.soldout.drain().collect()).into())
                     .await?;
