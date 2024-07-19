@@ -28,16 +28,27 @@ pub async fn start(config: &Config, context: Context) -> Result<()> {
         context.clone(),
         rx,
     );
-    let takeover_future = takeover::start(
-        &config.telegram.takeover_bot,
-        context.clone(),
-        format!("{}/15", config.redis),
-    );
 
-    tokio::select! {
-        r = signal::ctrl_c() => r.map_err(Into::into),
-        r = takeover_future => r,
-        r = pumpsub.start() => r,
-        r = processor.start() => r
+    // let services =
+
+    loop {
+        let takeover_future = takeover::start(
+            &config.telegram.takeover_bot,
+            context.clone(),
+            format!("{}/15", config.redis),
+        );
+
+        let r = tokio::select! {
+            r = signal::ctrl_c() => break,
+            r = takeover_future => r,
+            r = pumpsub.start() => r,
+            r = processor.start() => r
+        };
+
+        if let Err(e) = r {
+            tracing::error!("{e}");
+        }
     }
+
+    Ok(())
 }

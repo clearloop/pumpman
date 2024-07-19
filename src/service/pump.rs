@@ -85,7 +85,7 @@ impl PumpSub {
 
             // Send changes to receiver
             let elapsed = last.elapsed()?.as_secs();
-            if !self.soldout.is_empty() && elapsed > 15 {
+            if !self.soldout.is_empty() && elapsed > 5 {
                 self.tx
                     .send(PumpEvent::DevSoldout(self.soldout.drain().collect()).into())
                     .await?;
