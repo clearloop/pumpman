@@ -61,9 +61,13 @@ impl Processor {
 
             // check if dev is soldout
             let coin = client.coin(&mint, false, redis).await?;
-            let (dev, soldout) = client
+            let (_, soldout) = client
                 .soldout(&coin.mint, &coin.creator, true, redis)
                 .await?;
+
+            if !soldout {
+                continue;
+            }
 
             // check holders amount
             let holders = client
@@ -71,31 +75,19 @@ impl Processor {
                 .await?
                 .skip_bc(&coin.associated_bonding_curve);
 
-            if holders.len() < 5 {
+            if holders.len() < 15 {
                 continue;
-            }
-
-            if !soldout && holders.iter().any(|acc| acc.0 == dev) {
-                return Ok(());
             }
 
             let coin = client.coin(&mint, true, redis).await?;
             let pairs = client.pairs(&mint, false, redis).await?;
 
             self.context.update_coin(coin.clone())?;
-            Alert::new(
-                if soldout {
-                    AlertTitle::DevSoldOut
-                } else {
-                    AlertTitle::DevOutOfTop20
-                },
-                coin,
-                soldout,
-            )
-            .pairs(pairs)
-            .holders(holders)
-            .alert(&self.reporter, &self.channel)
-            .await?;
+            Alert::new(AlertTitle::DevSoldOut, coin, soldout)
+                .pairs(pairs)
+                .holders(holders)
+                .alert(&self.reporter, &self.channel)
+                .await?;
             redis.set(key, true)?;
         }
 
