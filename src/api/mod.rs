@@ -2,7 +2,7 @@
 
 use crate::{
     model::{pump::Coin, DexScreenerPair},
-    utils::{DAY, THOURS},
+    utils::{MIN, THOURS},
 };
 use anyhow::Result;
 use dex::DexScreenerTokensResult;
@@ -47,7 +47,7 @@ pub trait HttpClient {
 
     /// get coin of pump fun
     async fn coin(&self, mint: &str, update: bool, con: &mut Connection) -> Result<Coin> {
-        self.cget(&PumpApi::coin(mint), update, DAY, con)
+        self.cget(&PumpApi::coin(mint), update, MIN, con)
             .await
             .map_err(|e| {
                 tracing::error!("Failed to get pump coin {mint}: {e}");

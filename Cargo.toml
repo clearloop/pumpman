@@ -16,6 +16,7 @@ bitcode = { version = "0.6.0", features = ["serde"], default-features = false }
 borsh = "1.5.1"
 clap = { version = "4.5.8", features = ["derive"] }
 diesel = { version = "2.2.1", features = ["postgres", "r2d2"] }
+futures = "0.3.30"
 futures-util = "0.3.30"
 mpl-token-metadata = "4.1.2"
 redis = { version = "0.25.4", features = ["json"]}

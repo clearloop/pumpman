@@ -64,7 +64,6 @@ impl PumpSub {
             )
             .await?;
 
-        let mut last = SystemTime::now();
         let postgres = &mut self.context.postgres()?;
         let redis = &mut self.context.redis()?;
         while let Some(resp) = sub.0.next().await {
@@ -84,12 +83,10 @@ impl PumpSub {
             // }
 
             // Send changes to receiver
-            let elapsed = last.elapsed()?.as_secs();
-            if !self.soldout.is_empty() && elapsed > 5 {
+            if self.soldout.len() > 5 {
                 self.tx
                     .send(PumpEvent::DevSoldout(self.soldout.drain().collect()).into())
                     .await?;
-                last = SystemTime::now();
             }
         }
 

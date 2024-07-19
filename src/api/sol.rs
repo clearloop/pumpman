@@ -1,4 +1,4 @@
-use crate::utils::{sol, THOURS, TTMINS};
+use crate::utils::{sol, FIVE_MINS, THOURS};
 use anyhow::Result;
 use async_trait::async_trait;
 use bigdecimal::BigDecimal;
@@ -66,7 +66,7 @@ pub trait SolRpcApi {
                 .await?;
 
             let accs = sol::parse_token_accounts(accs)?;
-            redis.set_ex(key, bitcode::serialize(&accs)?, TTMINS)?;
+            redis.set_ex(key, bitcode::serialize(&accs)?, FIVE_MINS)?;
             accs
         } else {
             let accs: Vec<u8> = redis.get(&key)?;

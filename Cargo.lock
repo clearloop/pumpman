@@ -3781,6 +3781,7 @@ dependencies = [
  "borsh 1.5.1",
  "clap 4.5.8",
  "diesel",
+ "futures",
  "futures-util",
  "mpl-token-metadata",
  "redis 0.25.4",
