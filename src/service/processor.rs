@@ -72,7 +72,7 @@ impl Processor {
         // filter out mc less than $8k
         let coin = client.coin(&mint, false, redis).await?;
         if let Some(mc) = &coin.usd_market_cap {
-            if *mc < BigDecimal::from(7000) {
+            if *mc < BigDecimal::from(10000) {
                 return Ok(());
             }
         }
@@ -88,19 +88,12 @@ impl Processor {
 
         // check holders amount
         let holders = client
-            .top_holders(&mint, true, redis)
+            .top_holders(&mint, false, redis)
             .await?
             .skip_bc(&coin.associated_bonding_curve);
 
         if holders.len() < 15 {
             return Ok(());
-        }
-
-        let coin = client.coin(&mint, true, redis).await?;
-        if let Some(mc) = &coin.usd_market_cap {
-            if *mc < BigDecimal::from(7000) {
-                return Ok(());
-            }
         }
 
         let pairs = client.pairs(&mint, false, redis).await?;

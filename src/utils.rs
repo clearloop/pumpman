@@ -1,8 +1,6 @@
 // Day in seconds
 // pub const DAY: u64 = 86400;
 
-pub const MIN: u64 = 60;
-
 // 3 hrs
 pub const THOURS: u64 = 12800;
 

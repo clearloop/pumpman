@@ -5,7 +5,7 @@ use crate::{context::Context, telegram::takeover, Config};
 use anyhow::Result;
 use processor::Processor;
 use pump::{PumpEvent, PumpSub};
-use std::sync::Arc;
+use std::{sync::Arc, time::Duration};
 use teloxide::Bot;
 use tokio::{signal, sync::mpsc};
 
@@ -45,6 +45,7 @@ pub async fn start(config: &Config, context: Context) -> Result<()> {
 
         if let Err(e) = r {
             tracing::error!("{e}");
+            tokio::time::sleep(Duration::from_secs(5)).await;
         }
     }
 

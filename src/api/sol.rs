@@ -1,4 +1,4 @@
-use crate::utils::{sol, FIVE_MINS, THOURS};
+use crate::utils::{sol, FIVE_MINS};
 use anyhow::Result;
 use async_trait::async_trait;
 use bigdecimal::BigDecimal;
@@ -40,7 +40,7 @@ pub trait SolRpcApi {
                 .value
                 .into();
 
-            redis.set_ex(key, bitcode::serialize(&holders)?, THOURS)?;
+            redis.set_ex(key, bitcode::serialize(&holders)?, FIVE_MINS)?;
             holders
         } else {
             let holders: Vec<u8> = redis.get(&key)?;
