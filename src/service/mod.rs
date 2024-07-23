@@ -45,7 +45,7 @@ pub async fn start(config: &Config, context: Context) -> Result<()> {
 
         if let Err(e) = r {
             tracing::error!("{e}");
-            tokio::time::sleep(Duration::from_secs(5)).await;
+            tokio::time::sleep(Duration::from_secs(20)).await;
         }
     }
 

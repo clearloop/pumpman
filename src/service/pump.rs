@@ -64,7 +64,6 @@ impl PumpSub {
             )
             .await?;
 
-        let mut last = SystemTime::now();
         let postgres = &mut self.context.postgres()?;
         let redis = &mut self.context.redis()?;
         while let Some(resp) = sub.0.next().await {
@@ -76,15 +75,7 @@ impl PumpSub {
                 self.handle_trade(event, postgres, redis).await?;
             }
 
-            // TODO: handle events of new created tokens
-            //
-            // if let Some(event) = sol::parse::<sol::pump::events::CompleteEvent>(&resp.value.logs) {
-            //     tracing::trace!("{event:?}");
-            //     self.handle_complete(event, postgres, redis).await?;
-            // }
-
             // Send changes to receiver
-            let elapsed = last.elapsed()?;
             if self.soldout.len() > 10 {
                 self.tx
                     .send(PumpEvent::DevSoldout(self.soldout.drain().collect()).into())

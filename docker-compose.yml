@@ -1,29 +1,32 @@
 services:
   postgres:
-    image: postgres:16
-    restart: on-failure
+    image: postgres:alpine
+    restart: always
     environment:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
       - POSTGRES_DB=postgres
     volumes:
-      - /etc/takeover/pq:/var/lib/postgresql/data
+      - /etc/takeover/pg:/var/lib/postgresql/data
   redis:
-    restart: on-failure
     image: redis:7.2.4-alpine
+    restart: always
     volumes:
       - /etc/takeover/cache:/data
   replika:
     image: docker.io/clearloop/takeover:latest
-    restart: on-failure
-    command: ["-c", "/etc/config/config.toml", "-v"]
+    restart: always
+    command: ["-c", "/etc/config/config.toml", "-vv"]
     depends_on:
       - postgres
       - redis
     volumes:
-      - /home/ec2-user/takeover:/etc/config
+      - /home/ubuntu/takeover:/etc/config
     ports:
       - 5888:4000
-    links:
-      - postgres
-      - redis
+    resources:
+      limits:
+        cpus: "0.20"
+        pids: 1
+      reservations:
+        cpus: "0.05"
