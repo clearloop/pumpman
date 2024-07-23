@@ -40,20 +40,35 @@ impl Processor {
         while let Some(event) = self.rx.recv().await {
             tracing::trace!("Received event: {event:?}");
             if let Err(e) = match event {
-                Event::Pump(PumpEvent::DevSoldout(mints)) => {
-                    let f = mints
-                        .into_iter()
-                        .map(|mint| self.pump_soldout(mint))
-                        .collect::<Vec<_>>();
-                    futures::future::join_all(f)
-                        .await
-                        .into_iter()
-                        .collect::<Result<Vec<_>>>()
-                }
+                Event::Pump(PumpEvent::DevSoldout(mints)) => self.pump_soldout_handle(mints).await,
             } {
                 tracing::warn!("{e}");
                 sleep(Duration::from_secs(10)).await;
             }
+        }
+
+        Ok(())
+    }
+
+    /// split mints into windows
+    async fn pump_soldout_handle(&self, mints: Vec<String>) -> Result<()> {
+        let len = mints.len();
+        let mut ptr = 0;
+
+        while ptr < len {
+            let to = (ptr + 5).min(len);
+            futures::future::join_all(
+                mints[ptr..to]
+                    .iter()
+                    .map(|mint| self.pump_soldout(mint.to_string()))
+                    .collect::<Vec<_>>(),
+            )
+            .await
+            .into_iter()
+            .collect::<Result<Vec<_>>>()?;
+
+            tokio::time::sleep(Duration::from_millis(500)).await;
+            ptr = to;
         }
 
         Ok(())
