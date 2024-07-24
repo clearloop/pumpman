@@ -1,4 +1,4 @@
-use crate::utils::{sol, THOURS};
+use crate::utils::{sol, FIVE_MINS};
 use anyhow::Result;
 use async_trait::async_trait;
 use bigdecimal::BigDecimal;
@@ -40,7 +40,7 @@ pub trait SolRpcApi {
                 .value
                 .into();
 
-            redis.set_ex(key, bitcode::serialize(&holders)?, THOURS)?;
+            redis.set_ex(key, bitcode::serialize(&holders)?, FIVE_MINS)?;
             holders
         } else {
             let holders: Vec<u8> = redis.get(&key)?;
@@ -66,7 +66,7 @@ pub trait SolRpcApi {
                 .await?;
 
             let accs = sol::parse_token_accounts(accs)?;
-            redis.set(key, bitcode::serialize(&accs)?)?;
+            redis.set_ex(key, bitcode::serialize(&accs)?, FIVE_MINS)?;
             accs
         } else {
             let accs: Vec<u8> = redis.get(&key)?;
@@ -116,19 +116,15 @@ const TOTAL_SUPPLY: u64 = 1_000_000_000;
 pub struct Holders(Vec<(String, String)>);
 
 impl Holders {
-    pub fn top10percent(&self) -> Result<BigDecimal> {
+    pub fn percent(&self) -> Result<BigDecimal> {
         let total = BigDecimal::from(TOTAL_SUPPLY);
-        let present = if self.len() > 10 {
-            &self.0[..10]
-        } else {
-            &self.0
-        }
-        .iter()
-        .map(|acc| BigDecimal::from_str(&acc.1).map_err(Into::into))
-        .collect::<Result<Vec<_>>>()?
-        .into_iter()
-        .reduce(|cur, acc| acc + cur)
-        .unwrap_or_default();
+        let present = self
+            .iter()
+            .map(|acc| BigDecimal::from_str(&acc.1).map_err(Into::into))
+            .collect::<Result<Vec<_>>>()?
+            .into_iter()
+            .reduce(|cur, acc| acc + cur)
+            .unwrap_or_default();
 
         Ok((present / total * 100u32).round(2))
     }

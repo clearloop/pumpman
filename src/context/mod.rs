@@ -35,13 +35,13 @@ impl Context {
     }
 
     /// Init context
-    pub fn init(&self) -> Result<()> {
-        self.postgres.init()
+    pub async fn init(&self) -> Result<()> {
+        self.postgres.init().await
     }
 
     /// Postgres connection
-    pub fn postgres(&self) -> Result<Conn> {
-        self.postgres.conn()
+    pub async fn postgres(&self) -> Result<Conn> {
+        self.postgres.conn().await
     }
 
     /// Redis connection

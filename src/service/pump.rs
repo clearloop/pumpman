@@ -11,6 +11,7 @@ use anyhow::Result;
 use bigdecimal::BigDecimal;
 use core::time;
 use diesel::prelude::*;
+use diesel_async::RunQueryDsl;
 use futures_util::StreamExt;
 use redis::{Commands, Connection};
 use solana_client::{
@@ -20,6 +21,7 @@ use solana_client::{
 use solana_sdk::commitment_config::CommitmentConfig;
 use std::{
     collections::HashSet,
+    ops::Sub,
     rc::Rc,
     str::FromStr,
     sync::Arc,
@@ -64,7 +66,7 @@ impl PumpSub {
             .await?;
 
         let mut last = SystemTime::now();
-        let postgres = &mut self.context.postgres()?;
+        let postgres = &mut self.context.postgres().await?;
         let redis = &mut self.context.redis()?;
         while let Some(resp) = sub.0.next().await {
             if resp.value.err.is_some() {
@@ -75,15 +77,9 @@ impl PumpSub {
                 self.handle_trade(event, postgres, redis).await?;
             }
 
-            // TODO: handle events of new created tokens
-            //
-            // if let Some(event) = sol::parse::<sol::pump::events::CompleteEvent>(&resp.value.logs) {
-            //     tracing::trace!("{event:?}");
-            //     self.handle_complete(event, postgres, redis).await?;
-            // }
-
             // Send changes to receiver
-            if !self.soldout.is_empty() {
+            let elapsed = last.elapsed()?.as_secs();
+            if elapsed > 3 && self.soldout.len() > 10 {
                 self.tx
                     .send(PumpEvent::DevSoldout(self.soldout.drain().collect()).into())
                     .await?;

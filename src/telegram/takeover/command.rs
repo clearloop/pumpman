@@ -67,7 +67,7 @@ pub async fn takeover(
     dialogue: TakeoverDialogue,
     msg: Message,
 ) -> Result<()> {
-    if !context.eligible(&msg.chat.id.0.to_string())? {
+    if !context.eligible(&msg.chat.id.0.to_string()).await? {
         bot.send_message(msg.chat.id, message::INSUFFICIENT_CREDITS)
             .await?;
         return Ok(());
@@ -84,7 +84,7 @@ pub async fn info(
     dialogue: TakeoverDialogue,
     msg: Message,
 ) -> Result<()> {
-    let takeovers = context.takeovers(&msg.chat.id.0.to_string())?;
+    let takeovers = context.takeovers(&msg.chat.id.0.to_string()).await?;
     if takeovers.is_empty() {
         bot.send_message(msg.chat.id, message::NO_CTOS).await?;
         return Ok(());

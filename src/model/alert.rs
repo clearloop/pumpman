@@ -71,7 +71,7 @@ impl Display for Alert {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let percent = self
             .holders
-            .top10percent()
+            .percent()
             .unwrap_or_default()
             .to_string()
             .escaped();
@@ -108,7 +108,7 @@ impl Display for Alert {
 \- dev wallet sold out: {soldout}
 \- market cap: ${mc}k
 \- holders count: {count}
-\- top10 holders HODL: {percent}%
+\- top 20 holders HODL: {percent}%
 \- listed on dex: {dex}
 {socials}
 ```copy
@@ -123,6 +123,7 @@ impl Display for Alert {
 pub enum AlertTitle {
     ClaimCTO,
     DevSoldOut,
+    DevOutOfTop20,
     HoldersChanged(u8),
 }
 
@@ -134,7 +135,8 @@ impl Display for AlertTitle {
             match self {
                 Self::ClaimCTO => "Claim CTO".into(),
                 Self::DevSoldOut => "Dev Soldout".into(),
-                Self::HoldersChanged(threshold) => format!("Top 10 HODL under {threshold}%"),
+                Self::DevOutOfTop20 => "Dev Out of Top 20".into(),
+                Self::HoldersChanged(threshold) => format!("Top 20 HODL under {threshold}%"),
             }
         )
     }

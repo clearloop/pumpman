@@ -1,11 +1,13 @@
 // Day in seconds
-pub const DAY: u64 = 86400;
+// pub const DAY: u64 = 86400;
 
 // 3 hrs
 pub const THOURS: u64 = 12800;
 
 // 30mins
 pub const TTMINS: u64 = 1800;
+
+pub const FIVE_MINS: u64 = 300;
 
 pub mod base64 {
     use anyhow::Result;

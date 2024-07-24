@@ -62,7 +62,7 @@ impl Opt {
         let context = Context::new(&config)?;
 
         // pre-process
-        context.init()?;
+        context.init().await?;
 
         let Some(command) = self.command else {
             return service::start(&config, context.clone()).await;
@@ -114,7 +114,7 @@ impl Opt {
 
                 println!(
                     "{}",
-                    Alert::new(AlertTitle::DevSoldOut, coin, soldout)
+                    Alert::new(AlertTitle::DevSoldOut, coin, soldout.1)
                         .pairs(pairs)
                         .holders(holders)
                 );
