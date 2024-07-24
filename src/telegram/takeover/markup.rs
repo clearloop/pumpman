@@ -34,7 +34,7 @@ pub fn menu() -> Result<ReplyMarkup> {
 pub fn list(takeovers: &[TakeoverWithCoin]) -> Result<ReplyMarkup> {
     let mut takeovers = takeovers
         .iter()
-        .map(|t| KeyboardButton::new(format!("{}", t.takeover.telegram)))
+        .map(|t| KeyboardButton::new(t.takeover.telegram.to_string()))
         .collect::<Vec<_>>();
 
     let mut last: Vec<KeyboardButton> = vec![];

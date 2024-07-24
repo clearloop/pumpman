@@ -28,7 +28,7 @@ impl Context {
             .optional()?
             .unwrap_or(1);
 
-        return Ok(credits > count);
+        Ok(credits > count)
     }
 
     /// List all takeovers from user id
