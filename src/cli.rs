@@ -62,7 +62,7 @@ impl Opt {
         let context = Context::new(&config)?;
 
         // pre-process
-        context.init()?;
+        context.init().await?;
 
         let Some(command) = self.command else {
             return service::start(&config, context.clone()).await;

@@ -7,7 +7,8 @@ use crate::{
 };
 use anyhow::Result;
 use async_graphql::SimpleObject;
-use diesel::prelude::*;
+use diesel::prelude::{AsChangeset, Identifiable, Insertable, Queryable, Selectable};
+use diesel_async::RunQueryDsl;
 use serde::{Deserialize, Serialize};
 
 /// Community take over information
@@ -62,22 +63,25 @@ impl Takeover {
     /// 2. check if admin exists
     /// 3. insert self
     pub async fn write(&self, context: &Context) -> Result<()> {
-        let postgres = &mut context.postgres()?;
+        let postgres = &mut context.postgres().await?;
         let redis = &mut context.redis()?;
         let coin: Coin = context.client.coin(&self.mint, false, redis).await?.into();
         diesel::insert_into(coins::table)
             .values(coin)
             .on_conflict_do_nothing()
-            .execute(postgres)?;
+            .execute(postgres)
+            .await?;
 
         diesel::insert_into(users::table)
             .values(User::new(self.admin.clone()))
             .on_conflict_do_nothing()
-            .execute(postgres)?;
+            .execute(postgres)
+            .await?;
 
         diesel::insert_into(takeovers::table)
             .values(self)
-            .execute(postgres)?;
+            .execute(postgres)
+            .await?;
         Ok(())
     }
 }

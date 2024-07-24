@@ -11,6 +11,7 @@ use anyhow::Result;
 use bigdecimal::BigDecimal;
 use core::time;
 use diesel::prelude::*;
+use diesel_async::RunQueryDsl;
 use futures_util::StreamExt;
 use redis::{Commands, Connection};
 use solana_client::{
@@ -65,7 +66,7 @@ impl PumpSub {
             .await?;
 
         let mut last = SystemTime::now();
-        let postgres = &mut self.context.postgres()?;
+        let postgres = &mut self.context.postgres().await?;
         let redis = &mut self.context.redis()?;
         while let Some(resp) = sub.0.next().await {
             if resp.value.err.is_some() {

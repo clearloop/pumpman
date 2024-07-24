@@ -39,11 +39,10 @@ impl Processor {
         tracing::trace!("Starting processor ...");
         while let Some(event) = self.rx.recv().await {
             tracing::trace!("Received event: {event:?}");
-            if let Err(e) = match event {
-                Event::Pump(PumpEvent::DevSoldout(mints)) => self.pump_soldout_handle(mints).await,
-            } {
-                tracing::warn!("{e}");
-                sleep(Duration::from_secs(10)).await;
+            match event {
+                Event::Pump(PumpEvent::DevSoldout(mints)) => {
+                    self.pump_soldout_handle(mints).await?
+                }
             }
         }
 
@@ -112,7 +111,7 @@ impl Processor {
         }
 
         let pairs = client.pairs(&mint, false, redis).await?;
-        self.context.update_coin(coin.clone())?;
+        self.context.update_coin(coin.clone()).await?;
         Alert::new(AlertTitle::DevSoldOut, coin, soldout)
             .pairs(pairs)
             .holders(holders)
