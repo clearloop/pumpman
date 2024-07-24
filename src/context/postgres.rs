@@ -34,7 +34,7 @@ impl Postgres {
         tracing::debug!("initializing database ...");
 
         let config = AsyncDieselConnectionManager::<AsyncPgConnection>::new(uri.to_string());
-        let pool = Pool::builder(config).max_size(10).build()?;
+        let pool = Pool::builder(config).max_size(20).build()?;
 
         let this = Self {
             pool: Arc::new(pool),

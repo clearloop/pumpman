@@ -39,10 +39,11 @@ impl Processor {
         tracing::trace!("Starting processor ...");
         while let Some(event) = self.rx.recv().await {
             tracing::trace!("Received event: {event:?}");
-            match event {
-                Event::Pump(PumpEvent::DevSoldout(mints)) => {
-                    self.pump_soldout_handle(mints).await?
-                }
+            if let Err(e) = match event {
+                Event::Pump(PumpEvent::DevSoldout(mints)) => self.pump_soldout_handle(mints).await,
+            } {
+                tracing::warn!("Failed to process event, error: {e}");
+                tokio::time::sleep(Duration::from_secs(5)).await;
             }
         }
 
