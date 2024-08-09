@@ -87,7 +87,7 @@ impl Processor {
         // filter out mc less than $8k
         let coin = client.coin(&mint, false, redis).await?;
         if let Some(mc) = &coin.usd_market_cap {
-            if *mc < BigDecimal::from(10000) {
+            if *mc < BigDecimal::from(15000) {
                 return Ok(());
             }
         }

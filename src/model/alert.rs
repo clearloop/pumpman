@@ -55,6 +55,7 @@ impl Alert {
     }
 
     pub async fn alert(&self, bot: &Bot, channel: &str) -> Result<Message> {
+        tracing::debug!("Alert {} - {}", self.title, self.coin.mint);
         bot.send_message(
             Recipient::ChannelUsername(channel.to_string()),
             &self.to_string(),

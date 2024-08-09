@@ -15,8 +15,13 @@ services:
       - /etc/takeover/cache:/data
   replika:
     image: docker.io/clearloop/takeover:latest
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 256M
     restart: always
-    command: ["-c", "/etc/config/config.toml", "-vv"]
+    command: ["-c", "/etc/config/config.toml", "-v"]
     depends_on:
       - postgres
       - redis
@@ -24,9 +29,3 @@ services:
       - /home/ubuntu/takeover:/etc/config
     ports:
       - 5888:4000
-    resources:
-      limits:
-        cpus: "0.20"
-        pids: 1
-      reservations:
-        cpus: "0.05"
