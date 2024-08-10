@@ -49,6 +49,8 @@ pub struct Database {
 pub struct Takeover {
     /// Takeover alert bot
     pub bot: Option<String>,
+    /// If start takeover registry
+    pub registry: bool,
     /// Batch coins in events
     pub coins: usize,
     /// Batch requests of coins

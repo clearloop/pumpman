@@ -76,7 +76,6 @@ impl Display for Alert {
             .unwrap_or_default()
             .to_string()
             .escaped();
-        let socials = self.coin.socials();
         let dex = !self.pairs.is_empty();
         let (address, title, name, symbol, mint, mc, count, soldout) = (
             &self.coin.mint,
@@ -111,7 +110,7 @@ impl Display for Alert {
 \- holders count: {count}
 \- top 20 holders HODL: {percent}%
 \- listed on dex: {dex}
-{socials}
+
 ```copy
 {address}
 ```

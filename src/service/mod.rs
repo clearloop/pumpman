@@ -21,12 +21,12 @@ pub async fn start(config: &Config, context: Context) -> Result<()> {
     loop {
         let (tx, rx) = mpsc::channel::<Event>(50);
         let mut pumpsub = PumpSub::new(config, context.clone(), tx).await?;
-        let mut processor = Takeover::new(&config, context.clone(), rx);
+        let mut takeover = Takeover::new(&config.takeover, context.clone(), rx);
 
         let r = tokio::select! {
             _ = signal::ctrl_c() => break,
             r = pumpsub.start() => r,
-            r = processor.start() => r
+            r = takeover.start(format!("{}/15", config.database.redis)) => r
         };
 
         if let Err(e) = r {
