@@ -4,9 +4,7 @@
 // 3 hrs
 pub const THOURS: u64 = 12800;
 
-// 30mins
-pub const TTMINS: u64 = 1800;
-
+// 5 minutes
 pub const FIVE_MINS: u64 = 300;
 
 pub mod base64 {

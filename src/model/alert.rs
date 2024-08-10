@@ -55,9 +55,10 @@ impl Alert {
     }
 
     pub async fn alert(&self, bot: &Bot, channel: &str) -> Result<Message> {
+        tracing::debug!("Alert {} - {}", self.title, self.coin.mint);
         bot.send_message(
             Recipient::ChannelUsername(channel.to_string()),
-            &self.to_string(),
+            self.to_string(),
         )
         .parse_mode(ParseMode::MarkdownV2)
         // .reply_markup(value)
@@ -75,7 +76,6 @@ impl Display for Alert {
             .unwrap_or_default()
             .to_string()
             .escaped();
-        let socials = self.coin.socials();
         let dex = !self.pairs.is_empty();
         let (address, title, name, symbol, mint, mc, count, soldout) = (
             &self.coin.mint,
@@ -110,7 +110,7 @@ impl Display for Alert {
 \- holders count: {count}
 \- top 20 holders HODL: {percent}%
 \- listed on dex: {dex}
-{socials}
+
 ```copy
 {address}
 ```

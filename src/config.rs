@@ -8,12 +8,10 @@ use url::Url;
 pub struct Config {
     /// RPC endpoint of solana
     pub cluster: Cluster,
-    /// Postgres url
-    pub postgres: Url,
-    /// Redis url
-    pub redis: Url,
-    /// Telegram bot token
-    pub telegram: Telegram,
+    /// Database uri
+    pub database: Database,
+    /// Replika takeover service
+    pub takeover: Takeover,
 }
 
 impl Config {
@@ -37,13 +35,30 @@ pub struct Cluster {
     pub ws: Url,
 }
 
-/// Telegram config
-#[derive(Serialize, Deserialize)]
-pub struct Telegram {
-    /// Telegram token of the takeover bot
-    pub takeover_bot: String,
-    /// Subscription chat id
-    pub takeover_alerts: String,
-    /// Bot for takeover alerts
-    pub takeover_alerts_bot: String,
+/// Database config
+#[derive(Serialize, Deserialize, Clone)]
+pub struct Database {
+    /// Postgres url
+    pub postgres: Url,
+    /// Redis url
+    pub redis: Url,
+}
+
+/// Takeover service config
+#[derive(Serialize, Deserialize, Clone)]
+pub struct Takeover {
+    /// Takeover alert bot
+    pub bot: Option<String>,
+    /// If start takeover registry
+    pub registry: bool,
+    /// Batch coins in events
+    pub coins: usize,
+    /// Batch requests of coins
+    pub batch: usize,
+    /// Holders should greater than
+    pub holders: usize,
+    /// Market cap should greater than
+    pub marketcap: u64,
+    /// Takeover subscription channel
+    pub subscription: String,
 }

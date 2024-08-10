@@ -4,39 +4,15 @@ use crate::{
     api::{HttpClient, SolRpcApi},
     context::Context,
     model::{Alert, AlertTitle},
-    service, Config,
+    service,
+    sol::pump::accounts::BondingCurve,
+    Config,
 };
+use anchor_lang::AnchorDeserialize;
 use anyhow::Result;
 use clap::{Parser, Subcommand};
 use solana_sdk::pubkey::Pubkey;
 use std::{path::PathBuf, str::FromStr};
-
-/// Sub commands
-#[derive(Debug, Subcommand)]
-pub enum Command {
-    /// Prints transaction from signature
-    Sig {
-        signature: String,
-    },
-    /// Prints metadata of a token
-    Coin {
-        mint: String,
-    },
-    /// Prints pairs of a token
-    Dex {
-        mint: String,
-    },
-    /// Get alert info of a token
-    Info {
-        mint: String,
-    },
-    TokenAccounts {
-        acc: String,
-        mint: String,
-    },
-    /// Init database
-    Init,
-}
 
 /// Replika command line interfaces
 #[derive(Parser)]
@@ -68,21 +44,47 @@ impl Opt {
             return service::start(&config, context.clone()).await;
         };
 
+        command.run(context, self.update).await
+    }
+}
+
+/// Sub commands
+#[derive(Debug, Subcommand)]
+pub enum Command {
+    /// Prints transaction from signature
+    Sig { signature: String },
+    /// Prints metadata of a token
+    Coin { mint: String },
+    /// Prints pairs of a token
+    Dex { mint: String },
+    /// Get alert info of a token
+    Info { mint: String },
+    /// Get details of token account
+    TokenAccounts { acc: String, mint: String },
+    /// Get bonding curve of pumpfun coin
+    BondingCurve { mint: String },
+    /// Init database
+    Init,
+}
+
+impl Command {
+    /// Run command
+    pub async fn run(&self, context: Context, update: bool) -> Result<()> {
         // match commands
-        match command {
+        match &self {
             Command::Init => {}
             Command::Sig { signature } => {
-                let tx = context.client.tx(&signature).await?;
+                let tx = context.client.tx(signature).await?;
                 println!("{tx:#?}");
             }
             Command::Coin { mint } => {
                 let con = &mut context.redis()?;
-                let coin = context.client.coin(&mint, self.update, con).await?;
+                let coin = context.client.coin(mint, update, con).await?;
                 println!("{coin:#?}");
             }
             Command::Dex { mint } => {
                 let con = &mut context.redis()?;
-                let pairs = context.client.pairs(&mint, self.update, con).await?;
+                let pairs = context.client.pairs(mint, update, con).await?;
                 println!("{pairs:#?}");
             }
             Command::TokenAccounts { acc, mint } => {
@@ -90,9 +92,9 @@ impl Opt {
                 let accs = context
                     .client
                     .token_account(
-                        Pubkey::from_str(&mint)?,
-                        &Pubkey::from_str(&acc)?,
-                        self.update,
+                        Pubkey::from_str(mint)?,
+                        &Pubkey::from_str(acc)?,
+                        update,
                         con,
                     )
                     .await?;
@@ -100,15 +102,15 @@ impl Opt {
             }
             Command::Info { mint } => {
                 let con = &mut context.redis()?;
-                let coin = context.client.coin(&mint, self.update, con).await?;
-                let pairs = context.client.pairs(&mint, self.update, con).await?;
+                let coin = context.client.coin(mint, update, con).await?;
+                let pairs = context.client.pairs(mint, update, con).await?;
                 let soldout = context
                     .client
                     .soldout(&coin.mint, &coin.creator, false, con)
                     .await?;
                 let holders = context
                     .client
-                    .top_holders(&mint, self.update, con)
+                    .top_holders(mint, update, con)
                     .await?
                     .skip_bc(&coin.associated_bonding_curve);
 
@@ -118,6 +120,12 @@ impl Opt {
                         .pairs(pairs)
                         .holders(holders)
                 );
+            }
+            Command::BondingCurve { mint } => {
+                let pk = mint.parse()?;
+                let data = context.client.rpc().get_account_data(&pk).await?;
+                let bc = BondingCurve::deserialize(&mut data.as_ref())?;
+                println!("{bc:#?}");
             }
         }
 

@@ -1,6 +1,7 @@
 //! Telegram takeover bot
 
 use crate::context::Context;
+pub use alert::alert;
 use std::sync::Arc;
 use teloxide::{
     dispatching::dialogue::{self, serializer::Json, ErasedStorage, RedisStorage, Storage},
@@ -12,6 +13,7 @@ use teloxide::{
 };
 use {command::Command, state::State};
 
+mod alert;
 mod callback;
 mod command;
 mod context;
@@ -26,10 +28,9 @@ type TakeoverStorage = Arc<ErasedStorage<State>>;
 type Result<T> = core::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
 
 /// Start the takeover bot
-pub async fn start(takeover: &str, context: Context, redis: String) -> anyhow::Result<()> {
+pub async fn start(bot: &Bot, context: Context, redis: String) -> anyhow::Result<()> {
     tracing::info!("Starting the takeover bot ...");
 
-    let bot = Bot::new(takeover);
     let command = teloxide::filter_command::<Command, _>()
         .branch(case![Command::Start].endpoint(command::start))
         .branch(case![Command::Cancel].endpoint(command::cancel))
@@ -62,7 +63,7 @@ pub async fn start(takeover: &str, context: Context, redis: String) -> anyhow::R
         .branch(callback)
         .branch(dptree::endpoint(state::invalid));
 
-    settings(&bot).await?;
+    settings(bot).await?;
 
     let cache: TakeoverStorage = RedisStorage::open(redis, Json).await?.erase();
     Dispatcher::builder(bot.clone(), schema)
@@ -81,7 +82,6 @@ async fn settings(bot: &Bot) -> anyhow::Result<()> {
         .await?;
     bot.set_my_commands(Command::bot_commands().into_iter().collect::<Vec<_>>())
         .await?;
-    // bot.get_updates().timeout(60).await?;
 
     Ok(())
 }
