@@ -24,21 +24,14 @@ pub async fn start(config: &Config, context: Context) -> Result<()> {
         let (tx, rx) = mpsc::channel::<Event>(50);
         let mut pumpsub = PumpSub::new(config, context.clone(), tx).await?;
         let mut processor = Processor::new(
-            config.telegram.takeover_alerts.clone(),
-            Bot::new(config.telegram.takeover_alerts_bot.clone()),
+            config.service.takeover.subscription.clone(),
+            Bot::new(config.service.takeover.bot.clone()),
             context.clone(),
             rx,
         );
 
-        let takeover_future = takeover::start(
-            &config.telegram.takeover_bot,
-            context.clone(),
-            format!("{}/15", config.redis),
-        );
-
         let r = tokio::select! {
             r = signal::ctrl_c() => break,
-            r = takeover_future => r,
             r = pumpsub.start() => r,
             r = processor.start() => r
         };

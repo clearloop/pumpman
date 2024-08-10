@@ -8,12 +8,10 @@ use url::Url;
 pub struct Config {
     /// RPC endpoint of solana
     pub cluster: Cluster,
-    /// Postgres url
-    pub postgres: Url,
-    /// Redis url
-    pub redis: Url,
-    /// Telegram bot token
-    pub telegram: Telegram,
+    /// Database uri
+    pub database: Database,
+    /// Replika services
+    pub service: Service,
 }
 
 impl Config {
@@ -37,13 +35,26 @@ pub struct Cluster {
     pub ws: Url,
 }
 
-/// Telegram config
+/// Database config
 #[derive(Serialize, Deserialize)]
-pub struct Telegram {
-    /// Telegram token of the takeover bot
-    pub takeover_bot: String,
-    /// Subscription chat id
-    pub takeover_alerts: String,
-    /// Bot for takeover alerts
-    pub takeover_alerts_bot: String,
+pub struct Database {
+    /// Postgres url
+    pub postgres: Url,
+    /// Redis url
+    pub redis: Url,
+}
+
+/// Service configs
+#[derive(Serialize, Deserialize)]
+pub struct Service {
+    pub takeover: Takeover,
+}
+
+/// Takeover service config
+#[derive(Serialize, Deserialize)]
+pub struct Takeover {
+    /// Takeover subscription channel
+    pub subscription: String,
+    /// Takeover alert bot
+    pub bot: String,
 }

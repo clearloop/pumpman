@@ -4,8 +4,11 @@ use crate::{
     api::{HttpClient, SolRpcApi},
     context::Context,
     model::{Alert, AlertTitle},
-    service, Config,
+    service,
+    sol::pump::accounts::BondingCurve,
+    Config,
 };
+use anchor_lang::AnchorDeserialize;
 use anyhow::Result;
 use clap::{Parser, Subcommand};
 use solana_sdk::pubkey::Pubkey;
@@ -32,6 +35,9 @@ pub enum Command {
     },
     TokenAccounts {
         acc: String,
+        mint: String,
+    },
+    BondingCurve {
         mint: String,
     },
     /// Init database
@@ -118,6 +124,12 @@ impl Opt {
                         .pairs(pairs)
                         .holders(holders)
                 );
+            }
+            Command::BondingCurve { mint } => {
+                let pk = mint.parse()?;
+                let data = context.client.rpc().get_account_data(&pk).await?;
+                let bc = BondingCurve::deserialize(&mut data.as_ref())?;
+                println!("{bc:#?}");
             }
         }
 

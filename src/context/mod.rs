@@ -28,8 +28,8 @@ impl Context {
     /// Create new database interface
     pub fn new(config: &Config) -> Result<Self> {
         Ok(Self {
-            postgres: Postgres::new(&config.postgres)?,
-            redis: Redis::new(&config.redis)?,
+            postgres: Postgres::new(&config.database.postgres)?,
+            redis: Redis::new(&config.database.redis)?,
             client: Client::new(&config.cluster)?,
         })
     }

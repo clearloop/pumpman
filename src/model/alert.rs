@@ -58,7 +58,7 @@ impl Alert {
         tracing::debug!("Alert {} - {}", self.title, self.coin.mint);
         bot.send_message(
             Recipient::ChannelUsername(channel.to_string()),
-            &self.to_string(),
+            self.to_string(),
         )
         .parse_mode(ParseMode::MarkdownV2)
         // .reply_markup(value)
