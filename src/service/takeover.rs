@@ -2,33 +2,31 @@
 
 use crate::{
     api::{HttpClient, SolRpcApi},
+    config,
     context::{Context, TaskCache},
-    model::{Alert, AlertTitle, Coin},
-    schema::coins,
+    model::{Alert, AlertTitle},
     service::{Event, PumpEvent},
-    utils::TTMINS,
+    Config,
 };
 use anyhow::Result;
 use bigdecimal::BigDecimal;
-use diesel::sql_types::Decimal;
 use redis::Commands;
-use std::{str::FromStr, sync::Arc, time::Duration};
-use teloxide::{requests::Requester, types::Recipient, Bot};
-use tokio::{sync::mpsc::Receiver, time::sleep};
+use std::time::Duration;
+use teloxide::Bot;
+use tokio::sync::mpsc::Receiver;
 
 /// Pump events handler
-pub struct Processor {
-    channel: String,
-    reporter: Bot,
+pub struct Takeover {
+    config: config::Takeover,
     context: Context,
     rx: Receiver<Event>,
 }
 
-impl Processor {
-    pub fn new(channel: String, reporter: Bot, context: Context, rx: Receiver<Event>) -> Self {
+impl Takeover {
+    /// Create new takeover service
+    pub fn new(config: &Config, context: Context, rx: Receiver<Event>) -> Self {
         Self {
-            channel,
-            reporter,
+            config: config.takeover.clone(),
             context,
             rx,
         }
@@ -36,11 +34,19 @@ impl Processor {
 
     /// Start the reporter service
     pub async fn start(&mut self) -> Result<()> {
-        tracing::trace!("Starting processor ...");
+        let Some(reporter) = self.config.bot.take() else {
+            tracing::warn!("Takeover alerts is disabled since the bot token is not set.");
+            loop {
+                tokio::time::sleep(Duration::from_secs(86400)).await
+            }
+        };
+
+        tracing::trace!("Starting takeover alert ...");
+        let bot = Bot::new(reporter);
         while let Some(event) = self.rx.recv().await {
             tracing::trace!("Received event: {event:?}");
             if let Err(e) = match event {
-                Event::Pump(PumpEvent::DevSoldout(mints)) => self.pump_soldout_handle(mints).await,
+                Event::Pump(PumpEvent::DevSoldout(mints)) => self.soldout(&bot, mints).await,
             } {
                 tracing::warn!("Failed to process event, error: {e}");
                 tokio::time::sleep(Duration::from_secs(5)).await;
@@ -51,16 +57,16 @@ impl Processor {
     }
 
     /// split mints into windows
-    async fn pump_soldout_handle(&self, mints: Vec<String>) -> Result<()> {
+    async fn soldout(&self, bot: &Bot, mints: Vec<String>) -> Result<()> {
         let len = mints.len();
         let mut ptr = 0;
 
         while ptr < len {
-            let to = (ptr + 5).min(len);
+            let to = (ptr + self.config.batch).min(len);
             futures::future::join_all(
                 mints[ptr..to]
                     .iter()
-                    .map(|mint| self.pump_soldout(mint.to_string()))
+                    .map(|mint| self.alert(bot, mint.to_string()))
                     .collect::<Vec<_>>(),
             )
             .await
@@ -75,7 +81,7 @@ impl Processor {
     }
 
     /// Handle pump soldout
-    async fn pump_soldout(&self, mint: String) -> Result<()> {
+    async fn alert(&self, bot: &Bot, mint: String) -> Result<()> {
         let redis = &mut self.context.redis()?;
         let client = self.context.client.clone();
 
@@ -87,7 +93,7 @@ impl Processor {
         // filter out mc less than $8k
         let coin = client.coin(&mint, false, redis).await?;
         if let Some(mc) = &coin.usd_market_cap {
-            if *mc < BigDecimal::from(15000) {
+            if *mc < BigDecimal::from(self.config.marketcap) {
                 return Ok(());
             }
         }
@@ -107,7 +113,7 @@ impl Processor {
             .await?
             .skip_bc(&coin.associated_bonding_curve);
 
-        if holders.len() < 15 {
+        if holders.len() < self.config.holders {
             return Ok(());
         }
 
@@ -116,7 +122,7 @@ impl Processor {
         Alert::new(AlertTitle::DevSoldOut, coin, soldout)
             .pairs(pairs)
             .holders(holders)
-            .alert(&self.reporter, &self.channel)
+            .alert(bot, &self.config.subscription)
             .await?;
         redis.set(key, true)?;
 

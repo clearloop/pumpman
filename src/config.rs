@@ -10,8 +10,8 @@ pub struct Config {
     pub cluster: Cluster,
     /// Database uri
     pub database: Database,
-    /// Replika services
-    pub service: Service,
+    /// Replika takeover service
+    pub takeover: Takeover,
 }
 
 impl Config {
@@ -36,7 +36,7 @@ pub struct Cluster {
 }
 
 /// Database config
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct Database {
     /// Postgres url
     pub postgres: Url,
@@ -44,17 +44,19 @@ pub struct Database {
     pub redis: Url,
 }
 
-/// Service configs
-#[derive(Serialize, Deserialize)]
-pub struct Service {
-    pub takeover: Takeover,
-}
-
 /// Takeover service config
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct Takeover {
+    /// Takeover alert bot
+    pub bot: Option<String>,
+    /// Batch coins in events
+    pub coins: usize,
+    /// Batch requests of coins
+    pub batch: usize,
+    /// Holders should greater than
+    pub holders: usize,
+    /// Market cap should greater than
+    pub marketcap: u64,
     /// Takeover subscription channel
     pub subscription: String,
-    /// Takeover alert bot
-    pub bot: String,
 }
