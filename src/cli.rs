@@ -11,7 +11,11 @@ use crate::{
 use anchor_lang::AnchorDeserialize;
 use anyhow::Result;
 use clap::{Parser, Subcommand};
-use solana_sdk::pubkey::Pubkey;
+use solana_sdk::{
+    pubkey::Pubkey,
+    signature::{Keypair, Signature},
+    signer::Signer,
+};
 use std::{path::PathBuf, str::FromStr};
 
 /// Replika command line interfaces
@@ -23,6 +27,9 @@ pub struct Opt {
     /// Replika sub commands
     #[clap(subcommand)]
     command: Option<Command>,
+    /// Disabled takeover service
+    #[clap(short, long)]
+    disable_takeover: bool,
     /// If update cache
     #[clap(short, long)]
     update: bool,
@@ -34,8 +41,12 @@ pub struct Opt {
 impl Opt {
     /// Run commands
     pub async fn run(self) -> Result<()> {
-        let config = Config::load(self.config)?;
+        let mut config = Config::load(self.config)?;
         let context = Context::new(&config)?;
+
+        if self.disable_takeover {
+            config.takeover.disabled = true;
+        }
 
         // pre-process
         context.init().await?;
@@ -63,6 +74,14 @@ pub enum Command {
     TokenAccounts { acc: String, mint: String },
     /// Get bonding curve of pumpfun coin
     BondingCurve { mint: String },
+    /// Verify signature
+    Verify {
+        account: String,
+        message: String,
+        sig: String,
+    },
+    /// Sign message
+    Sign { message: String },
     /// Init database
     Init,
 }
@@ -126,6 +145,23 @@ impl Command {
                 let data = context.client.rpc().get_account_data(&pk).await?;
                 let bc = BondingCurve::deserialize(&mut data.as_ref())?;
                 println!("{bc:#?}");
+            }
+            Command::Verify {
+                account,
+                message,
+                sig,
+            } => {
+                let pk = Pubkey::from_str(account)?;
+                let result = Signature::from_str(sig)?.verify(&pk.to_bytes(), message.as_bytes());
+                println!("{result:?}");
+            }
+            Command::Sign { message } => {
+                let pair = Keypair::new();
+                let pubkey = pair.pubkey();
+                println!("pubkey: {pubkey}");
+
+                let r = pair.sign_message(&message.as_bytes());
+                println!("{r:?}");
             }
         }
 

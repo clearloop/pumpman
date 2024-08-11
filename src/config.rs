@@ -15,6 +15,14 @@ pub struct Config {
 }
 
 impl Config {
+    /// Get pumpsub config
+    pub fn pumpsub(&self) -> PumpSub {
+        PumpSub {
+            takeover_coins: self.takeover.coins,
+            takeover_disabled: self.takeover.disabled,
+        }
+    }
+
     /// Load config from path
     pub fn load(path: impl AsRef<Path>) -> Result<Self> {
         let config = fs::read_to_string(path.as_ref())
@@ -47,9 +55,13 @@ pub struct Database {
 /// Takeover service config
 #[derive(Serialize, Deserialize, Clone)]
 pub struct Takeover {
+    /// If disabled takeover
+    #[serde(default)]
+    pub disabled: bool,
     /// Takeover alert bot
     pub bot: Option<String>,
     /// If start takeover registry
+    #[serde(default)]
     pub registry: bool,
     /// Batch coins in events
     pub coins: usize,
@@ -61,4 +73,10 @@ pub struct Takeover {
     pub marketcap: u64,
     /// Takeover subscription channel
     pub subscription: String,
+}
+
+/// Pumpsub config
+pub struct PumpSub {
+    pub takeover_coins: usize,
+    pub takeover_disabled: bool,
 }

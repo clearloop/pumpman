@@ -3,6 +3,7 @@ use teloxide::utils::markdown;
 
 mod button;
 mod keyboard;
+pub mod pumpman;
 pub mod takeover;
 
 /// Escape to pattern markdown style
