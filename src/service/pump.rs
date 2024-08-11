@@ -3,7 +3,10 @@ use crate::{
     config,
     context::{Context, TaskCache},
     service::Event,
-    sol::{self, pump::events},
+    sol::{
+        self,
+        pump::{self, events},
+    },
     Config,
 };
 use anyhow::Result;
@@ -49,7 +52,7 @@ impl PumpSub {
         let pubsub = self.pubsub.clone();
         let mut sub = pubsub
             .logs_subscribe(
-                RpcTransactionLogsFilter::Mentions(vec![sol::pump::ID.to_string()]),
+                RpcTransactionLogsFilter::Mentions(vec![pump::ID.to_string()]),
                 RpcTransactionLogsConfig {
                     commitment: Some(CommitmentConfig::finalized()),
                 },
