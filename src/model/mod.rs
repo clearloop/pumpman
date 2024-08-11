@@ -2,6 +2,7 @@ pub mod alert;
 mod coin;
 mod dex;
 pub mod pump;
+mod pumpman;
 mod takeover;
 mod user;
 

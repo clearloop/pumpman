@@ -32,4 +32,22 @@ diesel::table! {
     }
 }
 
+diesel::table! {
+    pumpmen (id) {
+        id -> Int8,
+        created_at -> Date,
+        owner -> Text,
+        address -> Text,
+        mint -> Text,
+        batch -> BigInt,
+        tx_fee -> Decimal,
+        amount -> Decimal,
+        speed -> BigInt,
+        bump -> BigInt,
+        spent -> Decimal,
+        charged -> Decimal,
+        deposited -> Numeric
+    }
+}
+
 diesel::allow_tables_to_appear_in_same_query!(coins, takeovers, users);

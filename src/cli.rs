@@ -160,7 +160,7 @@ impl Command {
                 let pubkey = pair.pubkey();
                 println!("pubkey: {pubkey}");
 
-                let r = pair.sign_message(&message.as_bytes());
+                let r = pair.sign_message(message.as_bytes());
                 println!("{r:?}");
             }
         }
