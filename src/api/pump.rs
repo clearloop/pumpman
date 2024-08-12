@@ -18,11 +18,3 @@ impl PumpApi {
         format!("{PUMPFUN}/coins/{mint}")
     }
 }
-
-/// Pumpfun account
-pub struct PumpAccount {
-    /// Auth token of this account
-    auth: String,
-    /// Keypair of this account
-    pair: Keypair,
-}

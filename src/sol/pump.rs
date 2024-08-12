@@ -5,10 +5,18 @@ use borsh::BorshSerialize;
 pub use pump::*;
 use solana_sdk::{
     instruction::{AccountMeta, Instruction},
+    pubkey,
     pubkey::Pubkey,
 };
 
 anchor_lang::declare_program!(pump);
+
+/// Calculated from pumpfun program id
+///
+/// ```
+/// Pubkey::find_program_address(&[b"global"], &ID).0
+/// ```
+pub static GLOBAL: Pubkey = pubkey!("4wTV1YmiEkRvAtNtsSGPtUrqRYQMe5SKy2uB4Jjaxnjf");
 
 /// Buys tokens from a bonding curve
 #[derive(AnchorSerialize)]
@@ -35,51 +43,26 @@ pub struct TradeAccounts {
     pub user: Pubkey,
 }
 
-impl TradeAccounts {
-    /// Create new pumpfun trade accounts
-    pub fn new(mint: Pubkey, user: Pubkey, fee_recipient: Pubkey) -> Self {
-        Self {
-            mint,
-            user,
-            fee_recipient,
-        }
-    }
-
-    /// Get global account
-    pub fn global() -> Pubkey {
-        Pubkey::find_program_address(&[b"global"], &ID).0
-    }
-
-    /// Get bonding curve account
-    pub fn bonding_curve(&self) -> Pubkey {
-        Pubkey::find_program_address(
-            &[b"bonding-curve".as_ref(), &self.mint.to_bytes()],
-            &pump::ID,
-        )
-        .0
-    }
+/// Get bonding curve address from mint address
+pub fn bonding_curve(mint: &Pubkey) -> Pubkey {
+    Pubkey::find_program_address(&[b"bonding-curve".as_ref(), &mint.to_bytes()], &pump::ID).0
 }
 
-impl From<TradeAccounts> for Vec<AccountMeta> {
-    fn from(accs: TradeAccounts) -> Vec<AccountMeta> {
-        let bc = Pubkey::find_program_address(
-            &[b"bonding-curve".as_ref(), &accs.mint.to_bytes()],
-            &pump::ID,
-        )
-        .0;
-        vec![
-            AccountMeta::new_readonly(Pubkey::find_program_address(&[b"global"], &ID).0, false),
-            AccountMeta::new(accs.fee_recipient, false),
-            AccountMeta::new_readonly(accs.mint, false),
-            AccountMeta::new(bc.clone(), false),
-            AccountMeta::new(sol::atk_addr(&accs.mint, &bc), false),
-            AccountMeta::new(sol::atk_addr(&accs.mint, &accs.user), false),
-            AccountMeta::new(accs.user, true),
-            AccountMeta::new_readonly(sol::SYSTEM_PROGRAM, false),
-            AccountMeta::new_readonly(sol::TOKEN_PROGRAM, false),
-            AccountMeta::new_readonly(sol::RENT, false),
-            AccountMeta::new_readonly(sol::EVENT_AUTHORITY, false),
-            AccountMeta::new_readonly(ID, false),
-        ]
-    }
+/// Get pumpfun trade accounts
+pub fn trade_accounts(mint: Pubkey, user: Pubkey, fee_recipient: Pubkey) -> Vec<AccountMeta> {
+    let bc = bonding_curve(&mint);
+    vec![
+        AccountMeta::new_readonly(GLOBAL, false),
+        AccountMeta::new(fee_recipient, false),
+        AccountMeta::new_readonly(mint, false),
+        AccountMeta::new(bc.clone(), false),
+        AccountMeta::new(sol::atk_addr(&mint, &bc), false),
+        AccountMeta::new(sol::atk_addr(&mint, &user), false),
+        AccountMeta::new(user, true),
+        AccountMeta::new_readonly(sol::SYSTEM_PROGRAM, false),
+        AccountMeta::new_readonly(sol::TOKEN_PROGRAM, false),
+        AccountMeta::new_readonly(sol::RENT, false),
+        AccountMeta::new_readonly(sol::EVENT_AUTHORITY, false),
+        AccountMeta::new_readonly(ID, false),
+    ]
 }
