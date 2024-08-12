@@ -143,7 +143,7 @@ impl Command {
             Command::BondingCurve { mint } => {
                 let pk = mint.parse()?;
                 let data = context.client.rpc().get_account_data(&pk).await?;
-                let bc = BondingCurve::deserialize(&mut data.as_ref())?;
+                let bc = BondingCurve::deserialize(&mut data[8..].as_ref())?;
                 println!("{bc:#?}");
             }
             Command::Verify {

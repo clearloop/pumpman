@@ -9,6 +9,6 @@ mod context;
 mod model;
 mod schema;
 mod service;
-mod sol;
+pub mod sol;
 pub mod telegram;
 mod utils;
