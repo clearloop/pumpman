@@ -28,110 +28,58 @@ pub struct Sell {
     pub max_sol_cost: u64,
 }
 
-fn ix(instr: impl AnchorSerialize) -> Result<Instruction> {
-    Ok(Instruction {
-        program_id: ID,
-        accounts: vec![AccountMeta::new_readonly(
-            Pubkey::find_program_address(&[b"global"], &ID).0,
-            false,
-        )],
-        data: instr.try_to_vec()?,
-    })
-}
-
 /// pumpfun trading required accounts
 pub struct TradeAccounts {
     pub fee_recipient: Pubkey,
     pub mint: Pubkey,
-    pub associated_bonding_curve: Pubkey,
-    pub associated_user: Pubkey,
     pub user: Pubkey,
+}
+
+impl TradeAccounts {
+    /// Create new pumpfun trade accounts
+    pub fn new(mint: Pubkey, user: Pubkey, fee_recipient: Pubkey) -> Self {
+        Self {
+            mint,
+            user,
+            fee_recipient,
+        }
+    }
+
+    /// Get global account
+    pub fn global() -> Pubkey {
+        Pubkey::find_program_address(&[b"global"], &ID).0
+    }
+
+    /// Get bonding curve account
+    pub fn bonding_curve(&self) -> Pubkey {
+        Pubkey::find_program_address(
+            &[b"bonding-curve".as_ref(), &self.mint.to_bytes()],
+            &pump::ID,
+        )
+        .0
+    }
 }
 
 impl From<TradeAccounts> for Vec<AccountMeta> {
     fn from(accs: TradeAccounts) -> Vec<AccountMeta> {
+        let bc = Pubkey::find_program_address(
+            &[b"bonding-curve".as_ref(), &accs.mint.to_bytes()],
+            &pump::ID,
+        )
+        .0;
         vec![
-            TradeAccount::Global,
-            TradeAccount::FeeRecipient(accs.fee_recipient),
-            TradeAccount::Mint(accs.mint),
-            TradeAccount::BondingCurve,
-            TradeAccount::AssociatedBondingCurve(accs.associated_bonding_curve),
-            TradeAccount::AssociatedUser(accs.associated_user),
-            TradeAccount::User(accs.user),
-            TradeAccount::SystemProgram,
-            TradeAccount::TokenProgram,
-            TradeAccount::Rent,
-            TradeAccount::EventAuthority,
-            TradeAccount::Program,
+            AccountMeta::new_readonly(Pubkey::find_program_address(&[b"global"], &ID).0, false),
+            AccountMeta::new(accs.fee_recipient, false),
+            AccountMeta::new_readonly(accs.mint, false),
+            AccountMeta::new(bc.clone(), false),
+            AccountMeta::new(sol::atk_addr(&accs.mint, &bc), false),
+            AccountMeta::new(sol::atk_addr(&accs.mint, &accs.user), false),
+            AccountMeta::new(accs.user, true),
+            AccountMeta::new_readonly(sol::SYSTEM_PROGRAM, false),
+            AccountMeta::new_readonly(sol::TOKEN_PROGRAM, false),
+            AccountMeta::new_readonly(sol::RENT, false),
+            AccountMeta::new_readonly(sol::EVENT_AUTHORITY, false),
+            AccountMeta::new_readonly(ID, false),
         ]
-        .into_iter()
-        .map(Into::into)
-        .collect()
     }
-}
-
-/// pumpfun accounts
-pub enum TradeAccount {
-    Global,
-    FeeRecipient(Pubkey),
-    Mint(Pubkey),
-    BondingCurve,
-    AssociatedBondingCurve(Pubkey),
-    AssociatedUser(Pubkey),
-    User(Pubkey),
-    SystemProgram,
-    TokenProgram,
-    Rent,
-    EventAuthority,
-    Program,
-}
-
-impl From<TradeAccount> for AccountMeta {
-    fn from(acc: TradeAccount) -> AccountMeta {
-        let mut is_signer = false;
-        let mut is_writable = false;
-
-        let pubkey = match acc {
-            TradeAccount::Global => Pubkey::find_program_address(&[b"global"], &ID).0,
-            TradeAccount::FeeRecipient(pk) => {
-                is_writable = true;
-                pk
-            }
-            TradeAccount::Mint(pk) => pk,
-            TradeAccount::BondingCurve => {
-                is_writable = true;
-                Pubkey::find_program_address(&[b"bonding-curve"], &ID).0
-            }
-            TradeAccount::AssociatedBondingCurve(pk) => {
-                is_writable = true;
-                pk
-            }
-            TradeAccount::User(pk) => {
-                is_signer = true;
-                is_writable = true;
-                pk
-            }
-            TradeAccount::SystemProgram => sol::SYSTEM_PROGRAM,
-            TradeAccount::TokenProgram => sol::TOKEN_PROGRAM,
-            TradeAccount::Rent => sol::RENT,
-            TradeAccount::EventAuthority => sol::EVENT_AUTHORITY,
-            TradeAccount::Program => ID,
-            TradeAccount::AssociatedUser(pk) => pk,
-        };
-
-        AccountMeta {
-            pubkey,
-            is_signer,
-            is_writable,
-        }
-    }
-}
-
-#[test]
-fn test_keys() {
-    assert_eq!(b"global", &[103, 108, 111, 98, 97, 108]);
-    assert_eq!(
-        b"bonding-curve",
-        &[98, 111, 110, 100, 105, 110, 103, 45, 99, 117, 114, 118, 101]
-    );
 }

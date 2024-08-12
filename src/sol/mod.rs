@@ -2,7 +2,7 @@
 #![allow(unused)]
 
 use solana_sdk::{pubkey, pubkey::Pubkey};
-pub use utils::parse;
+pub use utils::{atk_addr, parse};
 
 pub mod pump;
 mod utils;

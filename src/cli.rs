@@ -8,7 +8,7 @@ use crate::{
     sol::pump::accounts::BondingCurve,
     Config,
 };
-use anchor_lang::AnchorDeserialize;
+use anchor_lang::AccountDeserialize;
 use anyhow::Result;
 use clap::{Parser, Subcommand};
 use solana_sdk::{
@@ -73,7 +73,7 @@ pub enum Command {
     /// Get details of token account
     TokenAccounts { acc: String, mint: String },
     /// Get bonding curve of pumpfun coin
-    BondingCurve { mint: String },
+    BondingCurve { bonding_curve: String },
     /// Verify signature
     Verify {
         account: String,
@@ -140,10 +140,10 @@ impl Command {
                         .holders(holders)
                 );
             }
-            Command::BondingCurve { mint } => {
-                let pk = mint.parse()?;
+            Command::BondingCurve { bonding_curve } => {
+                let pk = bonding_curve.parse()?;
                 let data = context.client.rpc().get_account_data(&pk).await?;
-                let bc = BondingCurve::deserialize(&mut data[8..].as_ref())?;
+                let bc = BondingCurve::try_deserialize(&mut data.as_ref())?;
                 println!("{bc:#?}");
             }
             Command::Verify {
