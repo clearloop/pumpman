@@ -9,7 +9,6 @@ anchor-lang = "0.30.1"
 anyhow = "1.0.86"
 async-graphql = "7.0.6"
 async-lock = "3.4.0"
-async-trait = "0.1.81"
 base64 = "0.22.1"
 bigdecimal = { version = "0.4.5", features = ["serde-json", "serde"] }
 bitcode = { version = "0.6.0", features = ["serde"], default-features = false }

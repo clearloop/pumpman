@@ -1,6 +1,8 @@
-use crate::utils::{sol, FIVE_MINS};
+use crate::{
+    sol::pump::TOTAL_SUPPLY,
+    utils::{sol, FIVE_MINS},
+};
 use anyhow::Result;
-use async_trait::async_trait;
 use bigdecimal::BigDecimal;
 use mpl_token_metadata::accounts::Metadata;
 use redis::{Commands, Connection};
@@ -14,7 +16,6 @@ use solana_transaction_status::{EncodedConfirmedTransactionWithStatusMeta, UiTra
 use std::{ops::Deref, str::FromStr, sync::Arc};
 
 /// Solana Rpc sugar
-#[async_trait]
 pub trait SolRpcApi {
     /// Solana rpc client
     fn rpc(&self) -> &Arc<RpcClient>;
@@ -108,8 +109,6 @@ pub trait SolRpcApi {
             .map_err(Into::into)
     }
 }
-
-const TOTAL_SUPPLY: u64 = 1_000_000_000;
 
 /// Token holders
 #[derive(Debug, Default, Serialize, Deserialize)]

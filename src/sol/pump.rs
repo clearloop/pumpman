@@ -18,6 +18,9 @@ anchor_lang::declare_program!(pump);
 /// ```
 pub static GLOBAL: Pubkey = pubkey!("4wTV1YmiEkRvAtNtsSGPtUrqRYQMe5SKy2uB4Jjaxnjf");
 
+/// Total supply of pumpfun coins
+pub const TOTAL_SUPPLY: u64 = 1_000_000_000;
+
 /// Buys tokens from a bonding curve
 #[derive(AnchorSerialize)]
 pub struct Buy {

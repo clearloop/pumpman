@@ -3941,7 +3941,6 @@ dependencies = [
  "anyhow",
  "async-graphql",
  "async-lock",
- "async-trait",
  "base64 0.22.1",
  "bigdecimal",
  "bitcode",
