@@ -1,20 +1,23 @@
-#![allow(unused)]
-use crate::{api::HttpClient, model::pump::Coin};
+// use solana_client::nonblocking::rpc_client::RpcClient;
+// use std::sync::Arc;
+
+use crate::{api::HttpClient, model::pump::Coin, utils::FIVE_MINS};
 use anyhow::Result;
-use async_trait::async_trait;
-use reqwest::Client;
-use serde::{de::DeserializeOwned, Deserialize, Serialize};
-use solana_sdk::{pubkey::Pubkey, signature::Keypair, signer::EncodableKeypair};
-use std::{fmt::Display, sync::Arc};
+use redis::Connection;
 
 const PUMPFUN: &str = "https://frontend-api.pump.fun";
 
-/// pump.fun api set
-pub struct PumpApi;
+// format!("{PUMPFUN}/coins/{mint}")
 
-impl PumpApi {
-    /// pumpfun coins api
-    pub fn coin(mint: &str) -> String {
-        format!("{PUMPFUN}/coins/{mint}")
+/// pump.fun api set
+pub trait PumpApi: HttpClient {
+    /// get coin of pump fun
+    async fn coin(&self, mint: &str, update: bool, con: &mut Connection) -> Result<Coin> {
+        self.cget(&format!("{PUMPFUN}/coins/{mint}"), update, FIVE_MINS, con)
+            .await
+            .map_err(|e| {
+                tracing::error!("Failed to get pump coin {mint}: {e}");
+                e
+            })
     }
 }

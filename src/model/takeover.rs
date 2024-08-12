@@ -1,6 +1,6 @@
 //! Community take over
 use crate::{
-    api::HttpClient,
+    api::PumpApi,
     context::Context,
     model::{Coin, User},
     schema::{coins, takeovers, users},

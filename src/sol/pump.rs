@@ -55,7 +55,7 @@ pub fn trade_accounts(mint: Pubkey, user: Pubkey, fee_recipient: Pubkey) -> Vec<
         AccountMeta::new_readonly(GLOBAL, false),
         AccountMeta::new(fee_recipient, false),
         AccountMeta::new_readonly(mint, false),
-        AccountMeta::new(bc.clone(), false),
+        AccountMeta::new(bc, false),
         AccountMeta::new(sol::atk_addr(&mint, &bc), false),
         AccountMeta::new(sol::atk_addr(&mint, &user), false),
         AccountMeta::new(user, true),

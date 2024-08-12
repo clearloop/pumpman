@@ -1,7 +1,7 @@
 //! Solana programs
 
 use crate::{
-    api::{HttpClient, SolRpcApi},
+    api::{DexScreenerApi, HttpClient, PumpApi, SolRpcApi},
     config::Cluster,
 };
 use anyhow::Result;
@@ -70,3 +70,6 @@ impl HttpClient for Client {
         &self.http
     }
 }
+
+impl PumpApi for Client {}
+impl DexScreenerApi for Client {}

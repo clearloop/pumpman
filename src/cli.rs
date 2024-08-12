@@ -1,7 +1,7 @@
 //! CLI operations
 
 use crate::{
-    api::{HttpClient, SolRpcApi},
+    api::{DexScreenerApi, PumpApi, SolRpcApi},
     context::Context,
     model::{Alert, AlertTitle},
     service,

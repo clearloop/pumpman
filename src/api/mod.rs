@@ -1,11 +1,6 @@
 //! Apis
 
-use crate::{
-    model::{pump::Coin, DexScreenerPair},
-    utils::{FIVE_MINS, THOURS},
-};
 use anyhow::Result;
-use dex::DexScreenerTokensResult;
 use redis::{Commands, Connection};
 use reqwest::Client;
 use serde::de::DeserializeOwned;
@@ -16,12 +11,11 @@ pub use {
     sol::{Holders, SolRpcApi},
 };
 
-pub mod dex;
+mod dex;
 mod pump;
 mod sol;
 
 /// General http client
-#[async_trait::async_trait]
 pub trait HttpClient {
     /// Get the http client
     fn client(&self) -> &Arc<Client>;
@@ -43,37 +37,5 @@ pub trait HttpClient {
         };
 
         serde_json::from_str(&text).map_err(Into::into)
-    }
-
-    /// get coin of pump fun
-    async fn coin(&self, mint: &str, update: bool, con: &mut Connection) -> Result<Coin> {
-        self.cget(&PumpApi::coin(mint), update, FIVE_MINS, con)
-            .await
-            .map_err(|e| {
-                tracing::error!("Failed to get pump coin {mint}: {e}");
-                e
-            })
-    }
-
-    /// dexscreener pairs
-    async fn pairs(
-        &self,
-        mint: &str,
-        update: bool,
-        con: &mut Connection,
-    ) -> Result<Vec<DexScreenerPair>> {
-        let tokens: DexScreenerTokensResult = self
-            .cget(&DexScreenerApi::tokens(mint), update, THOURS, con)
-            .await?;
-        Ok(tokens.pairs.unwrap_or_default())
-    }
-
-    /// Get dexscreener url
-    async fn pair(&self, mint: &str, update: bool, con: &mut Connection) -> Option<String> {
-        self.pairs(mint, update, con)
-            .await
-            .ok()?
-            .first()
-            .map(|p| p.url.clone())
     }
 }
