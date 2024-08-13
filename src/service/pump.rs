@@ -1,8 +1,12 @@
 //! Solana subscriber
 use crate::{
+    config,
     context::{Context, TaskCache},
     service::Event,
-    sol::{self, pump::events},
+    sol::{
+        self,
+        pump::{self, events},
+    },
     Config,
 };
 use anyhow::Result;
@@ -19,7 +23,7 @@ use tokio::sync::mpsc::Sender;
 /// Solana subscriber
 pub struct PumpSub {
     /// batch coins for soldout
-    coins: usize,
+    config: config::PumpSub,
     /// Service context
     context: Context,
     /// Solana pubsub client
@@ -35,7 +39,7 @@ impl PumpSub {
     pub async fn new(config: &Config, context: Context, tx: Sender<Event>) -> Result<Self> {
         tracing::trace!("Starting pubsub service ...");
         Ok(Self {
-            coins: config.takeover.coins,
+            config: config.pumpsub(),
             context,
             pubsub: Rc::new(PubsubClient::new(config.cluster.ws.as_ref()).await?),
             soldout: Default::default(),
@@ -48,7 +52,7 @@ impl PumpSub {
         let pubsub = self.pubsub.clone();
         let mut sub = pubsub
             .logs_subscribe(
-                RpcTransactionLogsFilter::Mentions(vec![sol::pump::ID.to_string()]),
+                RpcTransactionLogsFilter::Mentions(vec![pump::ID.to_string()]),
                 RpcTransactionLogsConfig {
                     commitment: Some(CommitmentConfig::finalized()),
                 },
@@ -62,7 +66,9 @@ impl PumpSub {
             }
 
             if let Some(event) = sol::parse::<events::TradeEvent>(&resp.value.logs) {
-                self.takeover(event, redis).await?;
+                if !self.config.takeover_disabled {
+                    self.takeover(event, redis).await?;
+                }
             }
         }
 
@@ -77,7 +83,7 @@ impl PumpSub {
             self.soldout.insert(mint.clone());
         }
 
-        if self.soldout.len() > self.coins {
+        if self.soldout.len() > self.config.takeover_coins {
             self.tx
                 .send(PumpEvent::DevSoldout(self.soldout.drain().collect()).into())
                 .await?;

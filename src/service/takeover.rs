@@ -3,7 +3,7 @@
 use crate::{
     config,
     context::Context,
-    service::{Event, PumpEvent},
+    service::{self, Event, PumpEvent},
     telegram::takeover,
 };
 use anyhow::Result;
@@ -30,11 +30,14 @@ impl Takeover {
 
     /// Start the reporter service
     pub async fn start(&mut self, redis: String) -> Result<()> {
+        if self.config.disabled {
+            tracing::info!("Takeover alerts is disabled");
+            return service::disable().await;
+        }
+
         let Some(reporter) = self.config.bot.take() else {
             tracing::warn!("Takeover alerts is disabled since the bot token is not set.");
-            loop {
-                tokio::time::sleep(Duration::from_secs(86400)).await
-            }
+            return service::disable().await;
         };
 
         tracing::trace!("Starting takeover service ...");

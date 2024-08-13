@@ -37,3 +37,10 @@ pub async fn start(config: &Config, context: Context) -> Result<()> {
 
     Ok(())
 }
+
+/// Disabled the current thread
+pub async fn disable() -> Result<()> {
+    loop {
+        tokio::time::sleep(Duration::from_secs(86400)).await
+    }
+}

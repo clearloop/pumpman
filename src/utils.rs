@@ -15,6 +15,8 @@ pub mod base64 {
     pub fn decode(encoded: &str) -> Result<Vec<u8>> {
         STANDARD.decode(encoded).map_err(Into::into)
     }
+
+
 }
 
 pub mod sol {

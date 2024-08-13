@@ -1,18 +1,26 @@
 //! CLI operations
 
 use crate::{
-    api::{HttpClient, SolRpcApi},
+    api::{DexScreenerApi, PumpApi, SolRpcApi},
     context::Context,
     model::{Alert, AlertTitle},
     service,
-    sol::pump::accounts::BondingCurve,
+    sol::{
+        self,
+        pump::{self, accounts::BondingCurve, SOL_SCALE},
+    },
     Config,
 };
-use anchor_lang::AnchorDeserialize;
+use anchor_lang::AccountDeserialize;
 use anyhow::Result;
+use bigdecimal::{BigDecimal, ToPrimitive};
 use clap::{Parser, Subcommand};
-use solana_sdk::pubkey::Pubkey;
-use std::{path::PathBuf, str::FromStr};
+use solana_sdk::{
+    pubkey::Pubkey,
+    signature::Signature,
+    signer::{keypair::Keypair, Signer},
+};
+use std::{fs, path::PathBuf, str::FromStr};
 
 /// Replika command line interfaces
 #[derive(Parser)]
@@ -23,6 +31,9 @@ pub struct Opt {
     /// Replika sub commands
     #[clap(subcommand)]
     command: Option<Command>,
+    /// Disabled takeover service
+    #[clap(short, long)]
+    disable_takeover: bool,
     /// If update cache
     #[clap(short, long)]
     update: bool,
@@ -34,8 +45,12 @@ pub struct Opt {
 impl Opt {
     /// Run commands
     pub async fn run(self) -> Result<()> {
-        let config = Config::load(self.config)?;
+        let mut config = Config::load(self.config)?;
         let context = Context::new(&config)?;
+
+        if self.disable_takeover {
+            config.takeover.disabled = true;
+        }
 
         // pre-process
         context.init().await?;
@@ -62,7 +77,21 @@ pub enum Command {
     /// Get details of token account
     TokenAccounts { acc: String, mint: String },
     /// Get bonding curve of pumpfun coin
-    BondingCurve { mint: String },
+    BondingCurve { bonding_curve: String },
+    /// Verify signature
+    Verify {
+        account: String,
+        message: String,
+        sig: String,
+    },
+    /// Sign message
+    Sign { message: String },
+    /// Simulate bump
+    SimBump {
+        mint: String,
+        amount: BigDecimal,
+        payer: PathBuf,
+    },
     /// Init database
     Init,
 }
@@ -121,11 +150,57 @@ impl Command {
                         .holders(holders)
                 );
             }
-            Command::BondingCurve { mint } => {
-                let pk = mint.parse()?;
+            Command::BondingCurve { bonding_curve } => {
+                let pk = bonding_curve.parse()?;
                 let data = context.client.rpc().get_account_data(&pk).await?;
-                let bc = BondingCurve::deserialize(&mut data.as_ref())?;
+                let bc = BondingCurve::try_deserialize(&mut data.as_ref())?;
                 println!("{bc:#?}");
+            }
+            Command::Verify {
+                account,
+                message,
+                sig,
+            } => {
+                let pk = Pubkey::from_str(account)?;
+                let result = Signature::from_str(sig)?.verify(&pk.to_bytes(), message.as_bytes());
+                println!("{result:?}");
+            }
+            Command::Sign { message } => {
+                let pair = Keypair::new();
+                let pubkey = pair.pubkey();
+                println!("pubkey: {pubkey}");
+
+                let r = pair.sign_message(message.as_bytes());
+                println!("{r:?}");
+            }
+            Command::SimBump {
+                mint,
+                amount,
+                payer,
+            } => {
+                let payer =
+                    Keypair::from_bytes(&serde_json::from_slice::<Vec<u8>>(&fs::read(payer)?)?)?;
+                let mint = Pubkey::from_str(mint)?;
+
+                let exists = context.client.check_auser(mint, payer.pubkey()).await;
+                let tx = context
+                    .client
+                    .bump(
+                        &mint,
+                        (amount * SOL_SCALE)
+                            .to_u64()
+                            .expect("Failed to convert sol amount"),
+                        &payer,
+                        exists,
+                    )
+                    .await?;
+
+                let resp = context.client.helius().simulate_transaction(&tx).await?;
+                println!("{resp:#?}");
+
+                let logs: Vec<pump::events::TradeEvent> =
+                    sol::parse2(&resp.value.logs.expect("Logs not found"))?;
+                println!("{logs:#?}");
             }
         }
 

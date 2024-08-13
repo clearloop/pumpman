@@ -1,5 +1,5 @@
 use crate::{
-    api::HttpClient,
+    api::{DexScreenerApi, PumpApi},
     context::Context,
     model::{Takeover, TakeoverWithCoin},
     telegram::{

@@ -1,5 +1,5 @@
 use crate::{
-    api::{HttpClient, SolRpcApi},
+    api::{DexScreenerApi, PumpApi, SolRpcApi},
     context::Context,
     model::{pump::Coin as PumpCoin, Alert, AlertTitle},
 };
