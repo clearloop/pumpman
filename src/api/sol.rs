@@ -2,6 +2,7 @@ use crate::{
     sol::pump::TOTAL_SUPPLY,
     utils::{sol, FIVE_MINS},
 };
+use anchor_lang::AccountDeserialize;
 use anyhow::Result;
 use bigdecimal::BigDecimal;
 use mpl_token_metadata::accounts::Metadata;
@@ -22,6 +23,12 @@ pub trait SolRpcApi {
 
     /// Helius advanced client
     fn helius(&self) -> &Arc<RpcClient>;
+
+    /// Fetch account data
+    async fn data<T: AccountDeserialize>(&self, pubkey: &Pubkey) -> Result<T> {
+        let data = self.rpc().get_account_data(&pubkey).await?;
+        T::try_deserialize(&mut data.as_ref()).map_err(Into::into)
+    }
 
     async fn top_holders(
         &self,

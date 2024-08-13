@@ -3,7 +3,7 @@ use anyhow::Result;
 use replika::sol::pump::{
     self,
     accounts::{BondingCurve, Global},
-    GLOBAL,
+    GLOBAL, SOL_SCALE,
 };
 use solana_client::rpc_client::RpcClient;
 use solana_sdk::pubkey::Pubkey;
@@ -18,15 +18,7 @@ fn test_keys() {
 }
 
 #[test]
-fn global_account_matched() -> Result<()> {
-    let client = RpcClient::new("https://api.mainnet-beta.solana.com");
-    let global = &client.get_account_data(&GLOBAL)?;
-    println!("{:#?}", Global::try_deserialize(&mut global.as_ref()));
-    Ok(())
-}
-
-#[test]
-fn trade_account() -> Result<()> {
+fn trade_accounts() -> Result<()> {
     let client = RpcClient::new("https://api.mainnet-beta.solana.com");
     let mint: Pubkey = "8CTjSbj6h3pAMx1UJcQXLwA4KXAwRF6nQ1JVMkBjpump".parse()?;
     let accs = pump::trade_accounts(mint, Default::default(), Default::default());
@@ -43,5 +35,17 @@ fn trade_account() -> Result<()> {
     // 3. check associated bonding curve account
     let abc = accs[4].pubkey;
     assert_eq!(abc, "CSeFMTTDFoDJwhohpVSMccjKTBmhSAtPeYGuvk2a7Vze".parse()?);
+    Ok(())
+}
+
+#[test]
+fn bonding_curve_calc() -> Result<()> {
+    let client = RpcClient::new("https://api.mainnet-beta.solana.com");
+    let data = &client.get_account_data(&GLOBAL)?;
+    let global = Global::try_deserialize(&mut data.as_ref())?;
+    println!("{:#?}", global);
+
+    let bc = global.init();
+    assert_eq!(global.buy(&bc, 1 * SOL_SCALE), 34612903225806);
     Ok(())
 }

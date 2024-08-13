@@ -1,20 +1,21 @@
-// use solana_client::nonblocking::rpc_client::RpcClient;
-// use std::sync::Arc;
-
-use std::str::FromStr;
-
+#![allow(unused)]
 use crate::{
     api::{HttpClient, SolRpcApi},
     model::pump::Coin,
+    sol::pump::{
+        self,
+        accounts::{BondingCurve, Global},
+        GLOBAL,
+    },
     utils::FIVE_MINS,
 };
+use anchor_lang::AccountDeserialize;
 use anyhow::Result;
 use redis::Connection;
 use solana_sdk::pubkey::Pubkey;
+use std::str::FromStr;
 
 const PUMPFUN: &str = "https://frontend-api.pump.fun";
-
-// format!("{PUMPFUN}/coins/{mint}")
 
 /// pump.fun api set
 pub trait PumpApi: HttpClient + SolRpcApi {
@@ -49,5 +50,31 @@ pub trait PumpApi: HttpClient + SolRpcApi {
             .first()
             .map(|acc| (acc.0.clone(), acc.1.starts_with('0')))
             .unwrap_or((acc.to_string(), false)))
+    }
+
+    /// Get global account info
+    async fn global(&self) -> Result<Global> {
+        self.data(&GLOBAL).await
+    }
+
+    /// Get global account info
+    async fn bonding_curve(&self, mint: &Pubkey) -> Result<BondingCurve> {
+        let bc = pump::bonding_curve(mint);
+        self.data(&bc).await
+    }
+
+    /// Buy a pumpfun token
+    async fn buy(&self) -> Result<()> {
+        Ok(())
+    }
+
+    /// Buy a pumpfun token
+    async fn sell(&self) -> Result<()> {
+        Ok(())
+    }
+
+    /// Bump a pumpfun token
+    async fn bump(&self) -> Result<()> {
+        Ok(())
     }
 }

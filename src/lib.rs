@@ -1,8 +1,9 @@
 //! Replika service
+#![allow(async_fn_in_trait)]
 
 pub use {cli::Opt, config::Config};
 
-mod api;
+pub mod api;
 mod cli;
 mod config;
 mod context;

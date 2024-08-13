@@ -15,11 +15,13 @@
 # k = 28
 
 SUPPLY_GT_85 = 793100000
-print()
 def mc(sol):
     # k = (30 + x) * (1073000000 - y)
+    #
+    # x: solana reserve
+    # y: token supply
     y = 1073000000 - 32190000000 / (30 + float(sol));
-    print("total supply (k):", y);
+    print("total supply (y):", y);
 
-sol = input("total reserve (y): ")
+sol = input("total reserve (x): ")
 mc(sol)
