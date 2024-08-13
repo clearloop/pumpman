@@ -112,7 +112,7 @@ pub trait PumpApi: HttpClient + SolRpcApi {
             let ix = instruction::create_associated_token_account(
                 &user,
                 &user,
-                &mint,
+                mint,
                 &sol::TOKEN_PROGRAM,
             );
             ixs.push(ix);
