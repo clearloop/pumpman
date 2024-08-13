@@ -21,7 +21,7 @@ fn test_keys() {
 fn trade_accounts() -> Result<()> {
     let client = RpcClient::new("https://api.mainnet-beta.solana.com");
     let mint: Pubkey = "8CTjSbj6h3pAMx1UJcQXLwA4KXAwRF6nQ1JVMkBjpump".parse()?;
-    let accs = pump::trade_accounts(mint, Default::default(), Default::default());
+    let accs = pump::trade_accounts(mint, Default::default(), Default::default(), true);
 
     // check bonding curve account
     let bc = accs[3].pubkey;
@@ -46,6 +46,9 @@ fn bonding_curve_calc() -> Result<()> {
     println!("{:#?}", global);
 
     let bc = global.init();
-    assert_eq!(global.buy(&bc, 1 * SOL_SCALE), 34612903225806);
+    assert_eq!(
+        global.buy(bc.real_sol_reserves, 1 * SOL_SCALE)?,
+        34612903225806
+    );
     Ok(())
 }

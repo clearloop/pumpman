@@ -5,18 +5,22 @@ use crate::{
     context::Context,
     model::{Alert, AlertTitle},
     service,
-    sol::pump::accounts::BondingCurve,
+    sol::{
+        self,
+        pump::{self, accounts::BondingCurve, SOL_SCALE},
+    },
     Config,
 };
 use anchor_lang::AccountDeserialize;
 use anyhow::Result;
+use bigdecimal::{BigDecimal, ToPrimitive};
 use clap::{Parser, Subcommand};
 use solana_sdk::{
     pubkey::Pubkey,
-    signature::{Keypair, Signature},
-    signer::Signer,
+    signature::Signature,
+    signer::{keypair::Keypair, Signer},
 };
-use std::{path::PathBuf, str::FromStr};
+use std::{fs, path::PathBuf, str::FromStr};
 
 /// Replika command line interfaces
 #[derive(Parser)]
@@ -82,6 +86,12 @@ pub enum Command {
     },
     /// Sign message
     Sign { message: String },
+    /// Simulate bump
+    SimBump {
+        mint: String,
+        amount: BigDecimal,
+        payer: PathBuf,
+    },
     /// Init database
     Init,
 }
@@ -162,6 +172,35 @@ impl Command {
 
                 let r = pair.sign_message(message.as_bytes());
                 println!("{r:?}");
+            }
+            Command::SimBump {
+                mint,
+                amount,
+                payer,
+            } => {
+                let payer =
+                    Keypair::from_bytes(&serde_json::from_slice::<Vec<u8>>(&fs::read(payer)?)?)?;
+                let mint = Pubkey::from_str(mint)?;
+
+                let exists = context.client.check_auser(mint, payer.pubkey()).await;
+                let tx = context
+                    .client
+                    .bump(
+                        &mint,
+                        (amount * SOL_SCALE)
+                            .to_u64()
+                            .expect("Failed to convert sol amount"),
+                        &payer,
+                        exists,
+                    )
+                    .await?;
+
+                let resp = context.client.helius().simulate_transaction(&tx).await?;
+                println!("{resp:#?}");
+
+                let logs: Vec<pump::events::TradeEvent> =
+                    sol::parse2(&resp.value.logs.expect("Logs not found"))?;
+                println!("{logs:#?}");
             }
         }
 

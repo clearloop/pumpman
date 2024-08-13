@@ -2,18 +2,33 @@
 use crate::{
     api::{HttpClient, SolRpcApi},
     model::pump::Coin,
-    sol::pump::{
+    sol::{
         self,
-        accounts::{BondingCurve, Global},
-        GLOBAL,
+        pump::{
+            self,
+            accounts::{BondingCurve, Global},
+            Buy, Sell, GLOBAL,
+        },
     },
     utils::FIVE_MINS,
 };
 use anchor_lang::AccountDeserialize;
 use anyhow::Result;
+use borsh::BorshSerialize;
 use redis::Connection;
-use solana_sdk::pubkey::Pubkey;
-use std::str::FromStr;
+use solana_sdk::{
+    account::Account,
+    instruction::Instruction,
+    message::Message,
+    pubkey::Pubkey,
+    signer::{keypair::Keypair, signers::Signers, Signer},
+    transaction::Transaction,
+};
+use spl_associated_token_account::instruction;
+use std::{
+    collections::{vec_deque, VecDeque},
+    str::FromStr,
+};
 
 const PUMPFUN: &str = "https://frontend-api.pump.fun";
 
@@ -63,18 +78,53 @@ pub trait PumpApi: HttpClient + SolRpcApi {
         self.data(&bc).await
     }
 
-    /// Buy a pumpfun token
-    async fn buy(&self) -> Result<()> {
-        Ok(())
-    }
+    /// get associated account
+    async fn check_auser(&self, mint: Pubkey, user: Pubkey) -> bool {
+        let auser = sol::atk_addr(&mint, &user);
 
-    /// Buy a pumpfun token
-    async fn sell(&self) -> Result<()> {
-        Ok(())
+        // TODO: check the error details
+        if self.helius().get_account(&auser).await.is_ok() {
+            return true;
+        }
+        false
     }
 
     /// Bump a pumpfun token
-    async fn bump(&self) -> Result<()> {
-        Ok(())
+    async fn bump(
+        &self,
+        mint: &Pubkey,
+        sol: u64,
+        payer: &Keypair,
+        exists: bool,
+    ) -> Result<Transaction> {
+        let bc = self.bonding_curve(mint).await?;
+        let global = self.global().await.unwrap_or(Global::cached());
+
+        // create instructions
+        let user = payer.pubkey();
+        let amount = global.buy(bc.real_sol_reserves, sol)?;
+        let buy = Buy::new(amount, sol * 115 / 100).ix(global, *mint, user);
+        let sell = Sell::new(amount, sol * 95 / 100).ix(global, *mint, user);
+
+        // create transaction
+        let mut ixs = vec![];
+        if !exists {
+            let ix = instruction::create_associated_token_account(
+                &user,
+                &user,
+                &mint,
+                &sol::TOKEN_PROGRAM,
+            );
+            ixs.push(ix);
+        }
+
+        ixs.append(&mut vec![buy, sell]);
+        let blockhash = self.helius().get_latest_blockhash().await?;
+        Ok(Transaction::new_signed_with_payer(
+            &ixs,
+            Some(&user),
+            &[payer],
+            blockhash,
+        ))
     }
 }
