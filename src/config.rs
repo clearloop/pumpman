@@ -11,15 +11,20 @@ pub struct Config {
     /// Database uri
     pub database: Database,
     /// Replika takeover service
-    pub takeover: Takeover,
+    pub takeover: Option<Takeover>,
+    /// Replika pumpman service
+    pub pumpman: Option<Pumpman>,
 }
 
 impl Config {
     /// Get pumpsub config
     pub fn pumpsub(&self) -> PumpSub {
-        PumpSub {
-            takeover_coins: self.takeover.coins,
-        }
+        let takeover_coins = if let Some(takeover) = &self.takeover {
+            takeover.coins
+        } else {
+            0
+        };
+        PumpSub { takeover_coins }
     }
 
     /// Load config from path
@@ -74,4 +79,10 @@ pub struct Takeover {
 /// Pumpsub config
 pub struct PumpSub {
     pub takeover_coins: usize,
+}
+
+/// Pumpman config
+#[derive(Serialize, Deserialize, Clone)]
+pub struct Pumpman {
+    pub bot: String,
 }
