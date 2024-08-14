@@ -28,14 +28,14 @@ pub struct User {
     #[diesel(deserialize_as = i64)]
     pub id: Option<i64>,
     /// Telegram user id
-    pub tgid: String,
+    pub tgid: i64,
     /// User keypair
     pub wallet: String,
 }
 
 impl User {
     /// Create a new user
-    pub fn new(tgid: String) -> Self {
+    pub fn new(tgid: i64) -> Self {
         Self {
             id: None,
             tgid,

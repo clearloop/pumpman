@@ -79,6 +79,8 @@ pub enum Command {
         amount: BigDecimal,
         payer: PathBuf,
     },
+    /// Get balance
+    Balance { address: String },
     /// Init database
     Init,
 }
@@ -159,6 +161,14 @@ impl Command {
 
                 let r = pair.sign_message(message.as_bytes());
                 println!("{r:?}");
+            }
+            Command::Balance { address } => {
+                let pk = Pubkey::from_str(address)?;
+                let balance = context.client.rpc().get_balance(&pk).await?;
+                println!(
+                    "{address} balance: {} SOL",
+                    BigDecimal::from(balance) / SOL_SCALE
+                );
             }
             Command::SimBump {
                 mint,

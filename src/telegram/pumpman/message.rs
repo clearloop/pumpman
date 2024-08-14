@@ -1,6 +1,7 @@
+use bigdecimal::BigDecimal;
 use solana_sdk::pubkey::Pubkey;
 
-use crate::config::PumpmanGlobal;
+use crate::{config::PumpmanGlobal, sol::pump::SOL_SCALE};
 
 /// message while entring group
 pub const ENTER_GROUP: &str = r#"
@@ -8,7 +9,7 @@ Only support private chats atm ))
 "#;
 
 /// Send menu message
-pub fn menu(global: &PumpmanGlobal, wallet: Pubkey) -> String {
+pub fn menu(global: &PumpmanGlobal, wallet: Pubkey, balance: u64) -> String {
     let efee = 10 * 60 / global.speed * global.total_fee();
     format!(
         r#"
@@ -26,7 +27,7 @@ Please paste a pumpfun link in the chat, for example: <code>https://pump.fun/8CT
         efee.round(4),
         (efee / 2u32 + &global.amount).round(6),
         wallet.to_string(),
-        0,
+        BigDecimal::from(balance) / SOL_SCALE,
     )
 }
 

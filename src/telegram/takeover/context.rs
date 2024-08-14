@@ -32,7 +32,7 @@ impl Context {
     }
 
     /// List all takeovers from user id
-    pub async fn takeovers(&self, uid: &str) -> Result<Vec<TakeoverWithCoin>> {
+    pub async fn takeovers(&self, uid: i64) -> Result<Vec<TakeoverWithCoin>> {
         let postgres = &mut self.postgres().await?;
 
         takeovers::table

@@ -82,7 +82,7 @@ pub async fn token(
     }
 
     takeover.telegram = handle;
-    takeover.admin = msg.chat.id.0.to_string();
+    takeover.admin = msg.chat.id.0;
     takeover.write(&context).await?;
 
     bot.send_message(msg.chat.id, "All set up!".to_string())

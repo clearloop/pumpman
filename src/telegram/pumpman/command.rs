@@ -1,7 +1,11 @@
-use crate::telegram::{
-    pumpman::{message, PumpmanContext},
-    Escape, Result,
+use crate::{
+    api::SolRpcApi,
+    telegram::{
+        pumpman::{message, PumpmanContext},
+        Escape, Result,
+    },
 };
+use solana_sdk::signer::Signer;
 use teloxide::{
     payloads::SendMessageSetters, prelude::Message, requests::Requester, types::ParseMode,
     utils::command::BotCommands, Bot,
@@ -27,12 +31,12 @@ pub enum Command {
 impl Command {
     /// command start
     pub async fn start(bot: Bot, context: PumpmanContext, msg: Message) -> Result<()> {
-        bot.send_message(
-            msg.chat.id,
-            message::menu(&context.global, Default::default()),
-        )
-        .parse_mode(ParseMode::Html)
-        .await?;
+        let wallet = context.wallet(msg.chat.id.0).await?;
+        let pubkey = wallet.pubkey();
+        let balance = context.context.client.rpc().get_balance(&pubkey).await?;
+        bot.send_message(msg.chat.id, message::menu(&context.global, pubkey, balance))
+            .parse_mode(ParseMode::Html)
+            .await?;
         Ok(())
     }
 

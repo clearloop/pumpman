@@ -17,7 +17,7 @@ diesel::table! {
         id -> Int8,
         banner -> Nullable<Text>,
         mint -> Text,
-        admin -> Text,
+        admin -> BigInt,
         telegram -> Text,
         twitter -> Nullable<Text>,
         website -> Nullable<Text>,
@@ -27,7 +27,7 @@ diesel::table! {
 diesel::table! {
     users (id) {
         id -> Int8,
-        tgid -> Text,
+        tgid -> Int8,
         wallet -> Text
     }
 }
