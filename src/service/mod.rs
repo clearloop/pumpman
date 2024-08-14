@@ -1,10 +1,14 @@
 //! Replika services
 
-use crate::{context::Context, Config};
+use crate::{
+    context::{Context, TgContext},
+    telegram, Config,
+};
 use anyhow::Result;
 use pump::{PumpEvent, PumpSub};
 use std::time::Duration;
 use takeover::Takeover;
+use teloxide::Bot;
 use tokio::{signal, sync::mpsc};
 
 mod pump;
@@ -37,6 +41,31 @@ pub async fn takeover(config: &Config, context: Context) -> Result<()> {
         if let Err(e) = r {
             tracing::error!("{e}");
             tokio::time::sleep(Duration::from_secs(20)).await;
+        }
+    }
+
+    Ok(())
+}
+
+/// Start pumpman service
+pub async fn pumpman(config: &Config, context: Context) -> Result<()> {
+    let Some(pumpman) = &config.pumpman else {
+        tracing::error!("pumpman config not found");
+        return Ok(());
+    };
+
+    let bot = Bot::new(&pumpman.bot);
+    let context = TgContext::new(context, pumpman.global.clone());
+
+    loop {
+        let r = tokio::select! {
+            _ = signal::ctrl_c() => break,
+            r = telegram::pumpman::start(&bot, context.clone(), config.database.redis.to_string()) => r,
+        };
+
+        if let Err(e) = r {
+            tracing::error!("{e}");
+            tokio::time::sleep(Duration::from_secs(5)).await;
         }
     }
 

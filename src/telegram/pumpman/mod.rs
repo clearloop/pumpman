@@ -1,10 +1,12 @@
 use std::sync::Arc;
 
-use crate::context::Context;
+use crate::{config::PumpmanGlobal, context::TgContext};
 use command::Command;
 use state::State;
 use teloxide::{
-    dispatching::dialogue::{self, serializer::Json, ErasedStorage, RedisStorage, Storage},
+    dispatching::dialogue::{
+        self, serializer::Json, Dialogue, ErasedStorage, RedisStorage, Storage,
+    },
     dptree::case,
     payloads::SetChatMenuButtonSetters,
     prelude::*,
@@ -17,13 +19,20 @@ mod message;
 mod state;
 
 type BotStorage = Arc<ErasedStorage<State>>;
+type BotDialogue = Dialogue<State, ErasedStorage<State>>;
 
 /// Start the pumpman bot
-pub async fn start(bot: &Bot, context: Context, redis: String) -> anyhow::Result<()> {
+pub async fn start(
+    bot: &Bot,
+    context: TgContext<PumpmanGlobal>,
+    redis: String,
+) -> anyhow::Result<()> {
     tracing::info!("Starting the pumpman bot ...");
 
     let command = teloxide::filter_command::<Command, _>()
-        .branch(case![Command::Start].endpoint(Command::start));
+        .branch(case![Command::Start].endpoint(Command::start))
+        .branch(case![Command::Config].endpoint(Command::config))
+        .branch(case![Command::Fee].endpoint(Command::fee));
 
     let group = Update::filter_message()
         .filter(|msg: Message| msg.chat.is_group())

@@ -20,13 +20,12 @@ pub struct Opt {
 impl Opt {
     /// Run commands
     pub async fn run(self) -> Result<()> {
-        let config = Config::load(self.config)?;
+        let config = Config::load(&self.config)?;
         let context = Context::new(&config)?;
 
         // pre-process
         context.init().await?;
-
-        service::takeover(&config, context.clone()).await
+        service::pumpman(&config, context).await
     }
 }
 
@@ -36,9 +35,9 @@ async fn main() -> Result<()> {
     let env: EnvFilter =
         EnvFilter::try_from_default_env().unwrap_or(EnvFilter::new(match app.verbose {
             0 => "info",
-            1 => "info,takeover=debug",
-            2 => "info,takeover=trace",
-            3 => "debug,takeover=trace",
+            1 => "info,pumpman=debug",
+            2 => "info,pumpman=trace",
+            3 => "debug,pumpman=trace",
             _ => "trace",
         }));
 

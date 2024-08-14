@@ -21,7 +21,11 @@ fn test_keys() {
 fn trade_accounts() -> Result<()> {
     let client = RpcClient::new("https://api.mainnet-beta.solana.com");
     let mint: Pubkey = "8CTjSbj6h3pAMx1UJcQXLwA4KXAwRF6nQ1JVMkBjpump".parse()?;
-    let accs = pump::trade_accounts(mint, Default::default(), Default::default(), true);
+    let data = &client.get_account_data(&GLOBAL)?;
+    let global = Global::try_deserialize(&mut data.as_ref())?;
+    let accs = pump::Buy::new(0, 0)
+        .ix(global, mint, Default::default())
+        .accounts;
 
     // check bonding curve account
     let bc = accs[3].pubkey;

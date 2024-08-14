@@ -1,4 +1,5 @@
 use anyhow::{anyhow, Result};
+use bigdecimal::BigDecimal;
 use serde::{Deserialize, Serialize};
 use std::{fs, path::Path};
 use url::Url;
@@ -84,5 +85,31 @@ pub struct PumpSub {
 /// Pumpman config
 #[derive(Serialize, Deserialize, Clone)]
 pub struct Pumpman {
+    /// pumpman bot token
     pub bot: String,
+    /// pumpman global config
+    pub global: PumpmanGlobal,
+}
+
+/// Pumpman config context
+#[derive(Serialize, Deserialize, Clone)]
+pub struct PumpmanGlobal {
+    /// Transaction fee in sol
+    pub tx_fee: BigDecimal,
+    /// Bump amount in sol
+    pub amount: BigDecimal,
+    /// bumping duration in seconds
+    pub speed: u64,
+    /// pumpman service fee per bump
+    pub fee: BigDecimal,
+    /// bump fee threshold per token
+    pub threshold: BigDecimal,
+}
+
+impl PumpmanGlobal {
+    /// Total fee per bump
+    pub fn total_fee(&self) -> BigDecimal {
+        let pf_fee = self.amount.clone() / 50u32;
+        pf_fee.clone() + &self.tx_fee + &self.fee
+    }
 }

@@ -1,5 +1,7 @@
 //! Global context
 
+use std::sync::Arc;
+
 use crate::Config;
 use ::redis::Connection;
 use anyhow::Result;
@@ -47,5 +49,24 @@ impl Context {
     /// Redis connection
     pub fn redis(&self) -> Result<Connection> {
         self.redis.con().map_err(Into::into)
+    }
+}
+
+/// Wrapped context
+#[derive(Clone)]
+pub struct TgContext<T> {
+    /// command context
+    pub context: Context,
+    /// cutomized data in context
+    pub data: Arc<T>,
+}
+
+impl<T> TgContext<T> {
+    /// Create new wrapped context
+    pub fn new(context: Context, data: T) -> Self {
+        Self {
+            context,
+            data: Arc::new(data),
+        }
     }
 }
