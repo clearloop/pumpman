@@ -30,11 +30,6 @@ impl Takeover {
 
     /// Start the reporter service
     pub async fn start(&mut self, redis: String) -> Result<()> {
-        if self.config.disabled {
-            tracing::info!("Takeover alerts is disabled");
-            return service::disable().await;
-        }
-
         let Some(reporter) = self.config.bot.take() else {
             tracing::warn!("Takeover alerts is disabled since the bot token is not set.");
             return service::disable().await;

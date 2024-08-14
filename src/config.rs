@@ -19,7 +19,6 @@ impl Config {
     pub fn pumpsub(&self) -> PumpSub {
         PumpSub {
             takeover_coins: self.takeover.coins,
-            takeover_disabled: self.takeover.disabled,
         }
     }
 
@@ -55,9 +54,6 @@ pub struct Database {
 /// Takeover service config
 #[derive(Serialize, Deserialize, Clone)]
 pub struct Takeover {
-    /// If disabled takeover
-    #[serde(default)]
-    pub disabled: bool,
     /// Takeover alert bot
     pub bot: Option<String>,
     /// If start takeover registry
@@ -78,5 +74,4 @@ pub struct Takeover {
 /// Pumpsub config
 pub struct PumpSub {
     pub takeover_coins: usize,
-    pub takeover_disabled: bool,
 }

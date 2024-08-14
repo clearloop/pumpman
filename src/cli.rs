@@ -4,7 +4,6 @@ use crate::{
     api::{DexScreenerApi, PumpApi, SolRpcApi},
     context::Context,
     model::{Alert, AlertTitle},
-    service,
     sol::{
         self,
         pump::{self, accounts::BondingCurve, SOL_SCALE},
@@ -30,10 +29,7 @@ pub struct Opt {
     config: PathBuf,
     /// Replika sub commands
     #[clap(subcommand)]
-    command: Option<Command>,
-    /// Disabled takeover service
-    #[clap(short, long)]
-    disable_takeover: bool,
+    command: Command,
     /// If update cache
     #[clap(short, long)]
     update: bool,
@@ -45,21 +41,12 @@ pub struct Opt {
 impl Opt {
     /// Run commands
     pub async fn run(self) -> Result<()> {
-        let mut config = Config::load(self.config)?;
+        let config = Config::load(self.config)?;
         let context = Context::new(&config)?;
-
-        if self.disable_takeover {
-            config.takeover.disabled = true;
-        }
 
         // pre-process
         context.init().await?;
-
-        let Some(command) = self.command else {
-            return service::start(&config, context.clone()).await;
-        };
-
-        command.run(context, self.update).await
+        self.command.run(context, self.update).await
     }
 }
 

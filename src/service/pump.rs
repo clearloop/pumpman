@@ -66,9 +66,7 @@ impl PumpSub {
             }
 
             if let Some(event) = sol::parse::<events::TradeEvent>(&resp.value.logs) {
-                if !self.config.takeover_disabled {
-                    self.takeover(event, redis).await?;
-                }
+                self.takeover(event, redis).await?;
             }
         }
 

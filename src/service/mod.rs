@@ -16,8 +16,8 @@ pub enum Event {
     Pump(PumpEvent),
 }
 
-/// Start all service
-pub async fn start(config: &Config, context: Context) -> Result<()> {
+/// Start takeover service
+pub async fn takeover(config: &Config, context: Context) -> Result<()> {
     loop {
         let (tx, rx) = mpsc::channel::<Event>(50);
         let mut pumpsub = PumpSub::new(config, context.clone(), tx).await?;
