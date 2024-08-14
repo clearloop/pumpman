@@ -1,8 +1,7 @@
-use std::sync::Arc;
-
-use crate::{config::PumpmanGlobal, context::TgContext};
 use command::Command;
+pub use context::PumpmanContext;
 use state::State;
+use std::sync::Arc;
 use teloxide::{
     dispatching::dialogue::{
         self, serializer::Json, Dialogue, ErasedStorage, RedisStorage, Storage,
@@ -15,6 +14,7 @@ use teloxide::{
 };
 
 mod command;
+mod context;
 mod message;
 mod state;
 
@@ -22,11 +22,7 @@ type BotStorage = Arc<ErasedStorage<State>>;
 type BotDialogue = Dialogue<State, ErasedStorage<State>>;
 
 /// Start the pumpman bot
-pub async fn start(
-    bot: &Bot,
-    context: TgContext<PumpmanGlobal>,
-    redis: String,
-) -> anyhow::Result<()> {
+pub async fn start(bot: &Bot, context: PumpmanContext, redis: String) -> anyhow::Result<()> {
     tracing::info!("Starting the pumpman bot ...");
 
     let command = teloxide::filter_command::<Command, _>()

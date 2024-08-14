@@ -28,7 +28,7 @@ diesel::table! {
     users (id) {
         id -> Int8,
         tgid -> Text,
-        credits -> Int8,
+        wallet -> Text
     }
 }
 
@@ -36,6 +36,7 @@ diesel::table! {
     pumpmen (id) {
         id -> Int8,
         created_at -> Date,
+        // user id in the users table
         owner -> Text,
         address -> Text,
         mint -> Text,

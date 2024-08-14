@@ -1,8 +1,9 @@
 //! Replika services
 
 use crate::{
-    context::{Context, TgContext},
-    telegram, Config,
+    context::Context,
+    telegram::{self, pumpman::PumpmanContext},
+    Config,
 };
 use anyhow::Result;
 use pump::{PumpEvent, PumpSub};
@@ -55,7 +56,7 @@ pub async fn pumpman(config: &Config, context: Context) -> Result<()> {
     };
 
     let bot = Bot::new(&pumpman.bot);
-    let context = TgContext::new(context, pumpman.global.clone());
+    let context = PumpmanContext::new(context, pumpman.global.clone());
 
     loop {
         let r = tokio::select! {

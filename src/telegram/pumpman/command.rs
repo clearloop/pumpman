@@ -1,7 +1,6 @@
-use crate::{
-    config::PumpmanGlobal,
-    context::TgContext,
-    telegram::{pumpman::message, Escape, Result},
+use crate::telegram::{
+    pumpman::{message, PumpmanContext},
+    Escape, Result,
 };
 use teloxide::{
     payloads::SendMessageSetters, prelude::Message, requests::Requester, types::ParseMode,
@@ -27,10 +26,10 @@ pub enum Command {
 
 impl Command {
     /// command start
-    pub async fn start(bot: Bot, context: TgContext<PumpmanGlobal>, msg: Message) -> Result<()> {
+    pub async fn start(bot: Bot, context: PumpmanContext, msg: Message) -> Result<()> {
         bot.send_message(
             msg.chat.id,
-            message::menu(&context.data, Default::default()),
+            message::menu(&context.global, Default::default()),
         )
         .parse_mode(ParseMode::Html)
         .await?;
@@ -38,16 +37,16 @@ impl Command {
     }
 
     /// Send config to users
-    pub async fn config(bot: Bot, context: TgContext<PumpmanGlobal>, msg: Message) -> Result<()> {
-        bot.send_message(msg.chat.id, message::config(&context.data))
+    pub async fn config(bot: Bot, context: PumpmanContext, msg: Message) -> Result<()> {
+        bot.send_message(msg.chat.id, message::config(&context.global))
             .parse_mode(ParseMode::Html)
             .await?;
         Ok(())
     }
 
     /// Send service fee details to users
-    pub async fn fee(bot: Bot, context: TgContext<PumpmanGlobal>, msg: Message) -> Result<()> {
-        bot.send_message(msg.chat.id, message::fee(&context.data))
+    pub async fn fee(bot: Bot, context: PumpmanContext, msg: Message) -> Result<()> {
+        bot.send_message(msg.chat.id, message::fee(&context.global))
             .parse_mode(ParseMode::Html)
             .await?;
         Ok(())
