@@ -29,7 +29,7 @@ pub struct PumpMan {
     /// creation time
     pub created_at: Date,
     /// Owner of this bump bot
-    pub owner: String,
+    pub owner: i64,
     /// Address of this bump bot
     pub address: String,
     /// Target coin to be bumped
@@ -37,23 +37,11 @@ pub struct PumpMan {
     /// How many bump transactions will be included at once
     pub batch: i64,
     /// Fee for each transaction
-    ///
-    /// TODO: make this an enum from config
     pub tx_fee: BigDecimal,
     /// Amount for each bump
-    ///
-    /// TODO: make this an enum from config
     pub amount: BigDecimal,
-    /// Deuration for each bump in millis
-    ///
-    /// TODO: make this an enum from config
+    /// Duration for each bump in millis
     pub speed: i64,
     /// Count of history bumps
     pub bump: i64,
-    /// Fee spent
-    pub spent: BigDecimal,
-    /// Fee charged
-    pub charged: BigDecimal,
-    /// Total deposited
-    pub deposited: BigDecimal,
 }
