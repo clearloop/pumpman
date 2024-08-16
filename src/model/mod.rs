@@ -10,6 +10,7 @@ pub use {
     alert::{Alert, AlertTitle},
     coin::Coin,
     dex::DexScreenerPair,
+    pumpman::Pumpman,
     takeover::{Takeover, TakeoverWithCoin},
     user::User,
 };

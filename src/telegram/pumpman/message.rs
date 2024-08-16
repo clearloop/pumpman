@@ -1,7 +1,10 @@
+use crate::{
+    config::PumpmanGlobal,
+    model::{pump::Coin, Pumpman},
+    sol::pump::SOL_SCALE,
+};
 use bigdecimal::BigDecimal;
 use solana_sdk::pubkey::Pubkey;
-
-use crate::{config::PumpmanGlobal, sol::pump::SOL_SCALE};
 
 /// message while entring group
 pub const ENTER_GROUP: &str = r#"
@@ -15,9 +18,7 @@ pub fn menu(global: &PumpmanGlobal, wallet: Pubkey, balance: u64) -> String {
         r#"
 The easist way to keep your token staying on the first page of PumpFun!
 
-* Bumping a token for 10 mins - <code>{} SOL</code>
-* Minimal deposit - <code>{} SOL</code> ( 5 mins bumping plus the basic bump amount )
-* Type /fee to check the details of fees
+Total /fees of bumping a token for 10 mins - <code>{} SOL</code>
 
 Your Bot Address: <code>{}</code>
 Balance: <code>{} SOL</code>
@@ -25,7 +26,6 @@ Balance: <code>{} SOL</code>
 Please paste a pumpfun link in the chat, for example: <code>https://pump.fun/8CTjSbj6h3pAMx1UJcQXLwA4KXAwRF6nQ1JVMkBjpump</code>
 "#,
         efee.round(4),
-        (efee / 2u32 + &global.amount).round(6),
         wallet.to_string(),
         BigDecimal::from(balance) / SOL_SCALE,
     )
@@ -35,7 +35,7 @@ Please paste a pumpfun link in the chat, for example: <code>https://pump.fun/8CT
 pub fn config(global: &PumpmanGlobal) -> String {
     format!(
         r#"
-Pumpman static configuration:
+Pumpman global config:
 
 * SOL Amount per Bump: <code>{} SOL</code>
 A <b>bump transaction</b> is the combination of buy and sell instructions of your token, the
@@ -46,8 +46,6 @@ Tips for the validators that make sure your bumps will be processed to solana su
 
 * Bump Speed: <code>{}s</code>
 Duration between each bump transaction.
-
-NOTE: the config above could not be customized atm, stay tuned for the future releases ^ ^
 "#,
         global.amount.round(3),
         global.tx_fee.round(6),
@@ -56,7 +54,7 @@ NOTE: the config above could not be customized atm, stay tuned for the future re
 }
 
 /// Message the details of the fees
-pub fn fee(global: &PumpmanGlobal) -> String {
+pub fn fees(global: &PumpmanGlobal) -> String {
     let pf_fee = global.amount.clone() / 50u32;
     let fee = pf_fee.clone() + &global.tx_fee + &global.fee;
 
@@ -80,5 +78,36 @@ no service fees applied on that token anymore!
         global.tx_fee.round(6),
         global.fee.round(4),
         global.threshold.round(2),
+    )
+}
+
+pub const INVALID_PUMPFUN_LINK: &str = r#"
+Invalid PumpFun link, for example:
+
+https://pump.fun/8CTjSbj6h3pAMx1UJcQXLwA4KXAwRF6nQ1JVMkBjpump
+"#;
+
+pub fn job(
+    global: &PumpmanGlobal,
+    job: &Pumpman,
+    coin: Coin,
+    wallet: Pubkey,
+    balance: u64,
+) -> String {
+    format!(
+        r#"
+Job <a href="https://pump.fun/{}">{} (${})</a>
+
+Your Bot Address: <code>{}</code>
+
+The current balance <code>{} SOL</code> can bump ${} for {}.
+"#,
+        coin.mint,
+        coin.name,
+        coin.symbol,
+        wallet.to_string(),
+        BigDecimal::from(balance) / SOL_SCALE,
+        coin.symbol,
+        job.duration(global, balance)
     )
 }

@@ -21,11 +21,11 @@ pub enum Command {
     #[command(description = "Start bot use.")]
     Start,
     /// Show the pumpman configuration
-    #[command(description = "Show the static pumpman configuration.")]
+    #[command(description = "Show the global config.")]
     Config,
     /// Show the details of service fee
-    #[command(description = "Show the details of service fee.")]
-    Fee,
+    #[command(description = "Show the details of service fees.")]
+    Fees,
 }
 
 impl Command {
@@ -49,8 +49,8 @@ impl Command {
     }
 
     /// Send service fee details to users
-    pub async fn fee(bot: Bot, context: PumpmanContext, msg: Message) -> Result<()> {
-        bot.send_message(msg.chat.id, message::fee(&context.global))
+    pub async fn fees(bot: Bot, context: PumpmanContext, msg: Message) -> Result<()> {
+        bot.send_message(msg.chat.id, message::fees(&context.global))
             .parse_mode(ParseMode::Html)
             .await?;
         Ok(())

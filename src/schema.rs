@@ -35,9 +35,9 @@ diesel::table! {
 diesel::table! {
     pumpmen (id) {
         id -> Int8,
+        active -> Bool,
         created_at -> Date,
         owner -> Int8,
-        address -> Text,
         mint -> Text,
         batch -> BigInt,
         tx_fee -> Decimal,
@@ -47,4 +47,4 @@ diesel::table! {
     }
 }
 
-diesel::allow_tables_to_appear_in_same_query!(coins, takeovers, users);
+diesel::allow_tables_to_appear_in_same_query!(coins, takeovers, users, pumpmen);

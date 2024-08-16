@@ -99,7 +99,7 @@ pub struct PumpmanGlobal {
     /// Bump amount in sol
     pub amount: BigDecimal,
     /// bumping duration in seconds
-    pub speed: u64,
+    pub speed: i64,
     /// pumpman service fee per bump
     pub fee: BigDecimal,
     /// bump fee threshold per token

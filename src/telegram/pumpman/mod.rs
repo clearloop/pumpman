@@ -19,7 +19,7 @@ mod message;
 mod state;
 
 type BotStorage = Arc<ErasedStorage<State>>;
-type BotDialogue = Dialogue<State, ErasedStorage<State>>;
+pub(crate) type BotDialogue = Dialogue<State, ErasedStorage<State>>;
 
 /// Start the pumpman bot
 pub async fn start(bot: &Bot, context: PumpmanContext, redis: String) -> anyhow::Result<()> {
@@ -28,13 +28,16 @@ pub async fn start(bot: &Bot, context: PumpmanContext, redis: String) -> anyhow:
     let command = teloxide::filter_command::<Command, _>()
         .branch(case![Command::Start].endpoint(Command::start))
         .branch(case![Command::Config].endpoint(Command::config))
-        .branch(case![Command::Fee].endpoint(Command::fee));
+        .branch(case![Command::Fees].endpoint(Command::fees));
 
     let group = Update::filter_message()
         .filter(|msg: Message| msg.chat.is_group())
         .branch(dptree::endpoint(command::group));
 
-    let message = Update::filter_message().branch(command);
+    let message = Update::filter_message()
+        .branch(command)
+        .branch(dptree::endpoint(state::any));
+
     let schema = dialogue::enter::<Update, ErasedStorage<State>, State, _>()
         .branch(group)
         .branch(message);
