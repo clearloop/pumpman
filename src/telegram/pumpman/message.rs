@@ -12,7 +12,7 @@ Only support private chats atm ))
 "#;
 
 /// Send menu message
-pub fn menu(global: &PumpmanGlobal, wallet: Pubkey, balance: u64) -> String {
+pub fn menu(global: &PumpmanGlobal, wallet: Pubkey) -> String {
     let efee = 10 * 60 / global.speed * global.total_fee();
     format!(
         r#"
@@ -21,13 +21,11 @@ The easist way to keep your token staying on the first page of PumpFun!
 Total /fees of bumping a token for 10 mins - <code>{} SOL</code>
 
 Your Bot Address: <code>{}</code>
-Balance: <code>{} SOL</code>
 
 Please paste a pumpfun link in the chat, for example: <code>https://pump.fun/8CTjSbj6h3pAMx1UJcQXLwA4KXAwRF6nQ1JVMkBjpump</code>
 "#,
         efee.round(4),
         wallet.to_string(),
-        BigDecimal::from(balance) / SOL_SCALE,
     )
 }
 

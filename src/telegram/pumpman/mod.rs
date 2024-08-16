@@ -39,9 +39,12 @@ pub async fn start(bot: &Bot, context: PumpmanContext, redis: String) -> anyhow:
         .branch(command)
         .branch(dptree::endpoint(state::any));
 
+    let callback = Update::filter_callback_query().branch(dptree::endpoint(callback::handle));
+
     let schema = dialogue::enter::<Update, ErasedStorage<State>, State, _>()
         .branch(group)
-        .branch(message);
+        .branch(message)
+        .branch(callback);
 
     settings(bot).await?;
 

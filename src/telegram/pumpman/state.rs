@@ -50,14 +50,14 @@ pub async fn any(
     let wallet = context.wallet(msg.chat.id.0).await?;
     let pubkey = wallet.pubkey();
     let balance = context.client.rpc().get_balance(&pubkey).await?;
-    let job = context.job(tgid, pubkey).await?;
+    let job = context.job(tgid, &pubkey.to_string()).await?;
 
     bot.send_message(
         msg.chat.id,
         message::job(&context.global, &job, coin, pubkey, balance),
     )
     .parse_mode(ParseMode::Html)
-    .reply_markup(job.markup(msg.chat.id.0, mint)?)
+    .reply_markup(job.markup()?)
     .await?;
 
     Ok(())

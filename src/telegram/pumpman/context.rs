@@ -7,7 +7,7 @@ use crate::{
 use anyhow::Result;
 use diesel::prelude::*;
 use diesel_async::RunQueryDsl;
-use solana_sdk::{pubkey::Pubkey, signature::Keypair};
+use solana_sdk::signature::Keypair;
 use std::{ops::Deref, sync::Arc};
 
 /// Wrapped context
@@ -55,19 +55,18 @@ impl PumpmanContext {
     }
 
     /// Get wallet address from telegram user id
-    pub async fn job(&self, tgid: i64, mint: Pubkey) -> Result<Pumpman> {
+    pub async fn job(&self, tgid: i64, mint: &str) -> Result<Pumpman> {
         let postgres = &mut self.context.postgres().await?;
-        let mint_str = mint.to_string();
         if let Some(job) = pumpmen::table
             .filter(pumpmen::owner.eq(tgid))
-            .filter(pumpmen::mint.eq(&mint_str))
+            .filter(pumpmen::mint.eq(mint))
             .first::<Pumpman>(postgres)
             .await
             .optional()?
         {
             Ok(job)
         } else {
-            let job = Pumpman::new(&self.global, tgid, mint_str);
+            let job = Pumpman::new(&self.global, tgid, mint.to_string());
             diesel::insert_into(pumpmen::table)
                 .values(&job)
                 .execute(postgres)
@@ -75,6 +74,16 @@ impl PumpmanContext {
 
             Ok(job)
         }
+    }
+
+    /// Get job by job id
+    pub async fn job_by_id(&self, id: i64) -> Result<Pumpman> {
+        let postgres = &mut self.context.postgres().await?;
+        pumpmen::table
+            .filter(pumpmen::id.eq(id))
+            .first::<Pumpman>(postgres)
+            .await
+            .map_err(Into::into)
     }
 }
 
