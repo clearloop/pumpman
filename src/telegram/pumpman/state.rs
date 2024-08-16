@@ -44,10 +44,8 @@ pub async fn any(
     }
 
     let redis = &mut context.redis()?;
-    let coin = context
-        .client
-        .coin(text.trim_start_matches(PUMPFUN_BASE), true, redis)
-        .await?;
+    let mint = text.trim_start_matches(PUMPFUN_BASE);
+    let coin = context.client.coin(mint, true, redis).await?;
     let tgid = msg.chat.id.0;
     let wallet = context.wallet(msg.chat.id.0).await?;
     let pubkey = wallet.pubkey();
@@ -59,7 +57,7 @@ pub async fn any(
         message::job(&context.global, &job, coin, pubkey, balance),
     )
     .parse_mode(ParseMode::Html)
-    .reply_markup(job.markup()?)
+    .reply_markup(job.markup(msg.chat.id.0, mint)?)
     .await?;
 
     Ok(())

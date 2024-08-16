@@ -42,7 +42,7 @@ diesel::table! {
         batch -> BigInt,
         tx_fee -> Decimal,
         amount -> Decimal,
-        speed -> BigInt,
+        speed -> Int8,
         bump -> BigInt
     }
 }

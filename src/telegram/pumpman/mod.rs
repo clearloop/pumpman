@@ -13,6 +13,7 @@ use teloxide::{
     utils::command::BotCommands,
 };
 
+pub mod callback;
 mod command;
 mod context;
 mod message;

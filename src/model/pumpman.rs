@@ -1,4 +1,13 @@
-use crate::{config::PumpmanGlobal, sol::pump::SOL_SCALE, telegram::Result};
+use std::str::FromStr;
+
+use crate::{
+    config::PumpmanGlobal,
+    sol::pump::SOL_SCALE,
+    telegram::{
+        pumpman::callback::{Callback, JobCommand},
+        Result,
+    },
+};
 use bigdecimal::{BigDecimal, ToPrimitive};
 use diesel::{pg::Pg, prelude::*};
 use serde::{Deserialize, Serialize};
@@ -90,28 +99,140 @@ impl Pumpman {
     }
 
     /// Show the markup from the current config
-    pub fn markup(&self) -> Result<ReplyMarkup> {
+    pub fn markup(&self, tgid: i64, mint: &str) -> Result<ReplyMarkup> {
         Ok(ReplyMarkup::inline_kb(vec![
-            vec![InlineKeyboardButton::url(
-                "Start",
-                "http://pumpman.io".parse()?,
-            )],
-            vec![InlineKeyboardButton::url(
-                "Batch 1 +",
-                "https://pumpman.io".parse()?,
-            )],
-            vec![InlineKeyboardButton::url(
-                "TX FEE +",
-                "https://pumpman.io".parse()?,
-            )],
-            vec![InlineKeyboardButton::url(
-                "SPEED +",
-                "https://pumpman.io".parse()?,
-            )],
-            vec![InlineKeyboardButton::url(
-                "BUMP AMOUNT +",
-                "https://pumpman.io".parse()?,
-            )],
+            self.start_button()?,
+            self.batch_button(tgid, mint)?,
+            self.tx_fee_button(tgid, mint)?,
+            self.amount_button(tgid, mint)?,
+            self.speed_button()?,
         ]))
+    }
+
+    fn speed_button(&self) -> Result<Vec<InlineKeyboardButton>> {
+        Ok(vec![InlineKeyboardButton::callback(
+            Speed::from(self.speed).format(),
+            Callback::job(self.owner, &self.mint, JobCommand::Speed).format()?,
+        )])
+    }
+
+    fn start_button(&self) -> Result<Vec<InlineKeyboardButton>> {
+        Ok(if self.active {
+            vec![InlineKeyboardButton::callback(
+                "Stop",
+                Callback::job(self.owner, &self.mint, JobCommand::Start).format()?,
+            )]
+        } else {
+            vec![InlineKeyboardButton::callback(
+                "Start",
+                Callback::job(self.owner, &self.mint, JobCommand::Start).format()?,
+            )]
+        })
+    }
+
+    fn batch_button(&self, tgid: i64, mint: &str) -> Result<Vec<InlineKeyboardButton>> {
+        let btn = InlineKeyboardButton::callback(
+            format!("Batch {}", self.batch),
+            Callback::DoNothing.format()?,
+        );
+
+        let up = InlineKeyboardButton::callback(
+            "+",
+            Callback::job(tgid, mint, JobCommand::BatchUp).format()?,
+        );
+
+        let down = InlineKeyboardButton::callback(
+            "-",
+            Callback::job(tgid, mint, JobCommand::BatchDown).format()?,
+        );
+
+        Ok(if self.batch == 1 {
+            vec![btn, up]
+        } else {
+            vec![btn, down, up]
+        })
+    }
+
+    fn tx_fee_button(&self, tgid: i64, mint: &str) -> Result<Vec<InlineKeyboardButton>> {
+        let btn = InlineKeyboardButton::callback(
+            format!("Tx Fee {}", self.tx_fee.round(6)),
+            Callback::DoNothing.format()?,
+        );
+
+        let up = InlineKeyboardButton::callback(
+            "+",
+            Callback::job(tgid, mint, JobCommand::TxFeeUp).format()?,
+        );
+
+        let down = InlineKeyboardButton::callback(
+            "-",
+            Callback::job(tgid, mint, JobCommand::TxFeeDown).format()?,
+        );
+
+        Ok(
+            if self.tx_fee.round(6) == BigDecimal::from_str("0.000045")?.round(6) {
+                vec![btn, up]
+            } else {
+                vec![btn, down, up]
+            },
+        )
+    }
+
+    fn amount_button(&self, tgid: i64, mint: &str) -> Result<Vec<InlineKeyboardButton>> {
+        let btn = InlineKeyboardButton::callback(
+            format!("Bump Amount {} SOL", self.amount.round(3)),
+            Callback::DoNothing.format()?,
+        );
+
+        let up = InlineKeyboardButton::callback(
+            "+",
+            Callback::job(tgid, mint, JobCommand::AmountUp).format()?,
+        );
+
+        let down = InlineKeyboardButton::callback(
+            "-",
+            Callback::job(tgid, mint, JobCommand::AmountDown).format()?,
+        );
+
+        Ok(
+            if self.amount.round(3) == BigDecimal::from_str("0.01")?.round(3) {
+                vec![btn, up]
+            } else {
+                vec![btn, down, up]
+            },
+        )
+    }
+}
+
+#[derive(Debug)]
+pub enum Speed {
+    Low,
+    Normal,
+    Fast,
+}
+
+impl Speed {
+    /// Get the secs repl
+    pub const fn secs(&self) -> u64 {
+        match self {
+            Self::Low => 13,
+            Self::Normal => 7,
+            Self::Fast => 5,
+        }
+    }
+
+    /// format to string
+    pub fn format(&self) -> String {
+        format!("Speed {self:?} ({}s)", self.secs())
+    }
+}
+
+impl From<i64> for Speed {
+    fn from(s: i64) -> Self {
+        match s {
+            5 => Self::Fast,
+            13 => Self::Low,
+            _ => Self::Normal,
+        }
     }
 }
