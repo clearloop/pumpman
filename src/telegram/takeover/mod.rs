@@ -28,9 +28,10 @@ type TakeoverStorage = Arc<ErasedStorage<State>>;
 type Result<T> = core::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
 
 /// Start the takeover bot
-pub async fn start(bot: &Bot, context: Context, redis: String) -> anyhow::Result<()> {
+pub async fn start(bot: &str, context: Context, redis: String) -> anyhow::Result<()> {
     tracing::info!("Starting the takeover bot ...");
 
+    let bot = Bot::new(bot);
     let command = teloxide::filter_command::<Command, _>()
         .branch(case![Command::Start].endpoint(command::start))
         .branch(case![Command::Cancel].endpoint(command::cancel))
@@ -63,7 +64,7 @@ pub async fn start(bot: &Bot, context: Context, redis: String) -> anyhow::Result
         .branch(callback)
         .branch(dptree::endpoint(state::invalid));
 
-    settings(bot).await?;
+    settings(&bot).await?;
 
     let cache: TakeoverStorage = RedisStorage::open(redis, Json).await?.erase();
     Dispatcher::builder(bot.clone(), schema)

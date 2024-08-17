@@ -1,6 +1,6 @@
 use anyhow::Result;
 use clap::Parser;
-use replika::{service, Config, Context};
+use replika::{service::Takeover, Config, Context};
 use std::path::PathBuf;
 use tracing_subscriber::EnvFilter;
 
@@ -26,7 +26,7 @@ impl Opt {
         // pre-process
         context.init().await?;
 
-        service::takeover(&config, context.clone()).await
+        Takeover::start(&config, context.clone()).await
     }
 }
 

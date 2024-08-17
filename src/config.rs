@@ -18,16 +18,6 @@ pub struct Config {
 }
 
 impl Config {
-    /// Get pumpsub config
-    pub fn pumpsub(&self) -> PumpSub {
-        let takeover_coins = if let Some(takeover) = &self.takeover {
-            takeover.coins
-        } else {
-            0
-        };
-        PumpSub { takeover_coins }
-    }
-
     /// Load config from path
     pub fn load(path: impl AsRef<Path>) -> Result<Self> {
         let config = fs::read_to_string(path.as_ref())
@@ -61,7 +51,7 @@ pub struct Database {
 #[derive(Serialize, Deserialize, Clone)]
 pub struct Takeover {
     /// Takeover alert bot
-    pub bot: Option<String>,
+    pub bot: String,
     /// If start takeover registry
     #[serde(default)]
     pub registry: bool,
@@ -75,11 +65,6 @@ pub struct Takeover {
     pub marketcap: u64,
     /// Takeover subscription channel
     pub subscription: String,
-}
-
-/// Pumpsub config
-pub struct PumpSub {
-    pub takeover_coins: usize,
 }
 
 /// Pumpman config
