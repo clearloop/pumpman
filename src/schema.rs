@@ -17,7 +17,7 @@ diesel::table! {
         id -> Int8,
         banner -> Nullable<Text>,
         mint -> Text,
-        admin -> Text,
+        admin -> BigInt,
         telegram -> Text,
         twitter -> Nullable<Text>,
         website -> Nullable<Text>,
@@ -27,27 +27,35 @@ diesel::table! {
 diesel::table! {
     users (id) {
         id -> Int8,
-        tgid -> Text,
-        credits -> Int8,
+        tgid -> Int8,
+        wallet -> Text
     }
 }
 
 diesel::table! {
     pumpmen (id) {
         id -> Int8,
+        active -> Bool,
         created_at -> Date,
-        owner -> Text,
-        address -> Text,
+        owner -> Int8,
         mint -> Text,
         batch -> BigInt,
         tx_fee -> Decimal,
         amount -> Decimal,
-        speed -> BigInt,
-        bump -> BigInt,
-        spent -> Decimal,
-        charged -> Decimal,
-        deposited -> Numeric
+        speed -> Int8,
+        bump -> BigInt
     }
 }
 
-diesel::allow_tables_to_appear_in_same_query!(coins, takeovers, users);
+diesel::table! {
+    pumpman_global (id) {
+        id -> Int8,
+        owner -> Int8,
+        batch -> BigInt,
+        tx_fee -> Decimal,
+        amount -> Decimal,
+        speed -> Int8,
+    }
+}
+
+diesel::allow_tables_to_appear_in_same_query!(coins, takeovers, users, pumpmen);

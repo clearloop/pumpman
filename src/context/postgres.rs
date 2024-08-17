@@ -13,10 +13,12 @@ use url::Url;
 ///
 /// NOTE: do not change the orders since there
 /// are references inside.
-const CREATE_TABLES: [&str; 3] = [
+const CREATE_TABLES: &[&str] = &[
     include_str!("../../sql/coins.sql"),
     include_str!("../../sql/users.sql"),
     include_str!("../../sql/takeovers.sql"),
+    include_str!("../../sql/pumpmen.sql"),
+    include_str!("../../sql/pumpman_global.sql"),
 ];
 
 /// Pooled connection
@@ -57,7 +59,10 @@ impl Postgres {
     async fn create_tables(&self) -> Result<()> {
         let conn = &mut self.conn().await?;
         for create_table in CREATE_TABLES {
-            if let Err(e) = diesel::sql_query(create_table).execute(conn).await {
+            if let Err(e) = diesel::sql_query(create_table.to_string())
+                .execute(conn)
+                .await
+            {
                 tracing::debug!("Failed to table: {e}\n{}", create_table);
             }
         }

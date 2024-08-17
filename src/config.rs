@@ -1,4 +1,5 @@
 use anyhow::{anyhow, Result};
+use bigdecimal::BigDecimal;
 use serde::{Deserialize, Serialize};
 use std::{fs, path::Path};
 use url::Url;
@@ -11,16 +12,20 @@ pub struct Config {
     /// Database uri
     pub database: Database,
     /// Replika takeover service
-    pub takeover: Takeover,
+    pub takeover: Option<Takeover>,
+    /// Replika pumpman service
+    pub pumpman: Option<Pumpman>,
 }
 
 impl Config {
     /// Get pumpsub config
     pub fn pumpsub(&self) -> PumpSub {
-        PumpSub {
-            takeover_coins: self.takeover.coins,
-            takeover_disabled: self.takeover.disabled,
-        }
+        let takeover_coins = if let Some(takeover) = &self.takeover {
+            takeover.coins
+        } else {
+            0
+        };
+        PumpSub { takeover_coins }
     }
 
     /// Load config from path
@@ -55,9 +60,6 @@ pub struct Database {
 /// Takeover service config
 #[derive(Serialize, Deserialize, Clone)]
 pub struct Takeover {
-    /// If disabled takeover
-    #[serde(default)]
-    pub disabled: bool,
     /// Takeover alert bot
     pub bot: Option<String>,
     /// If start takeover registry
@@ -78,5 +80,30 @@ pub struct Takeover {
 /// Pumpsub config
 pub struct PumpSub {
     pub takeover_coins: usize,
-    pub takeover_disabled: bool,
+}
+
+/// Pumpman config
+#[derive(Serialize, Deserialize, Clone)]
+pub struct Pumpman {
+    /// pumpman bot token
+    pub bot: String,
+    /// pumpman global config
+    pub global: PumpmanGlobal,
+}
+
+/// Pumpman config context
+#[derive(Serialize, Deserialize, Clone)]
+pub struct PumpmanGlobal {
+    /// Transaction fee in sol
+    pub tx_fee: BigDecimal,
+    /// Bump amount in sol
+    pub amount: BigDecimal,
+    /// bumping duration in seconds
+    pub speed: i64,
+    /// pumpman service fee per bump
+    pub fee: BigDecimal,
+    /// bump fee threshold per token
+    pub threshold: BigDecimal,
+    /// How many bumps to be batched
+    pub batch: i64,
 }

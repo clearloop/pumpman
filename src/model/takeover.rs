@@ -39,7 +39,7 @@ pub struct Takeover {
     /// The address of the token to be taken over
     pub mint: String,
     /// Telegram user id of this takeover
-    pub admin: String,
+    pub admin: i64,
     /// Telegram link
     pub telegram: String,
     /// Twitter link
@@ -73,7 +73,7 @@ impl Takeover {
             .await?;
 
         diesel::insert_into(users::table)
-            .values(User::new(self.admin.clone()))
+            .values(User::new(self.admin))
             .on_conflict_do_nothing()
             .execute(postgres)
             .await?;

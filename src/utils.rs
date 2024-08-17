@@ -16,7 +16,10 @@ pub mod base64 {
         STANDARD.decode(encoded).map_err(Into::into)
     }
 
-
+    /// base64 encode
+    pub fn encode(data: &[u8]) -> String {
+        STANDARD.encode(data)
+    }
 }
 
 pub mod sol {

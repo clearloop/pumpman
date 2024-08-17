@@ -16,3 +16,5 @@ impl<T: Display> Escape for T {
         markdown::escape(&self.to_string())
     }
 }
+
+pub type Result<T> = core::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;

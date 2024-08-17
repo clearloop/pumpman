@@ -2,6 +2,7 @@ use crate::schema::users;
 use async_graphql::SimpleObject;
 use diesel::prelude::*;
 use serde::{Deserialize, Serialize};
+use solana_sdk::signature::Keypair;
 
 /// Replika users
 #[derive(
@@ -27,18 +28,18 @@ pub struct User {
     #[diesel(deserialize_as = i64)]
     pub id: Option<i64>,
     /// Telegram user id
-    pub tgid: String,
-    /// Credits this user has
-    pub credits: i64,
+    pub tgid: i64,
+    /// User keypair
+    pub wallet: String,
 }
 
 impl User {
     /// Create a new user
-    pub fn new(tgid: String) -> Self {
+    pub fn new(tgid: i64) -> Self {
         Self {
             id: None,
             tgid,
-            credits: 1,
+            wallet: bs58::encode(Keypair::new().to_bytes()).into_string(),
         }
     }
 }

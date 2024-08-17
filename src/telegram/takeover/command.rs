@@ -84,7 +84,7 @@ pub async fn info(
     dialogue: TakeoverDialogue,
     msg: Message,
 ) -> Result<()> {
-    let takeovers = context.takeovers(&msg.chat.id.0.to_string()).await?;
+    let takeovers = context.takeovers(msg.chat.id.0).await?;
     if takeovers.is_empty() {
         bot.send_message(msg.chat.id, message::NO_CTOS).await?;
         return Ok(());

@@ -3,7 +3,7 @@
 use crate::{
     context::Context,
     model::{pump, Coin, Takeover, TakeoverWithCoin},
-    schema::{coins, takeovers, users},
+    schema::{coins, takeovers},
 };
 use anyhow::Result;
 use diesel::prelude::*;
@@ -11,28 +11,28 @@ use diesel_async::RunQueryDsl;
 
 impl Context {
     /// Check if the user has enough credits
-    pub async fn eligible(&self, uid: &str) -> Result<bool> {
-        let postgres = &mut self.postgres().await?;
+    pub async fn eligible(&self, _uid: &str) -> Result<bool> {
+        // let postgres = &mut self.postgres().await?;
+        //
+        // let count = takeovers::table
+        //     .filter(takeovers::admin.eq(&uid))
+        //     .count()
+        //     .get_result(postgres)
+        //     .await?;
+        //
+        // let credits = users::table
+        //     .select(users::credits)
+        //     .filter(users::tgid.eq(&uid))
+        //     .first(postgres)
+        //     .await
+        //     .optional()?
+        //     .unwrap_or(1);
 
-        let count = takeovers::table
-            .filter(takeovers::admin.eq(&uid))
-            .count()
-            .get_result(postgres)
-            .await?;
-
-        let credits = users::table
-            .select(users::credits)
-            .filter(users::tgid.eq(&uid))
-            .first(postgres)
-            .await
-            .optional()?
-            .unwrap_or(1);
-
-        Ok(credits > count)
+        Ok(true)
     }
 
     /// List all takeovers from user id
-    pub async fn takeovers(&self, uid: &str) -> Result<Vec<TakeoverWithCoin>> {
+    pub async fn takeovers(&self, uid: i64) -> Result<Vec<TakeoverWithCoin>> {
         let postgres = &mut self.postgres().await?;
 
         takeovers::table
