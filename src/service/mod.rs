@@ -31,7 +31,7 @@ pub async fn takeover(config: &Config, context: Context) -> Result<()> {
     loop {
         let (tx, rx) = mpsc::channel::<Event>(50);
         let mut pumpsub = PumpSub::new(config, context.clone(), tx).await?;
-        let mut takeover = Takeover::new(&takeover, context.clone(), rx);
+        let mut takeover = Takeover::new(takeover, context.clone(), rx);
 
         let r = tokio::select! {
             _ = signal::ctrl_c() => break,

@@ -94,33 +94,24 @@ impl PumpmanGlobal {
         ]))
     }
 
-    fn id(&self) -> i64 {
-        self.id.unwrap_or_default()
-    }
-
     fn speed_button(&self) -> Result<Vec<InlineKeyboardButton>> {
         Ok(vec![InlineKeyboardButton::callback(
             Speed::from(self.speed).format(),
-            Callback::global(self.id(), JobCommand::Speed).format()?,
+            Callback::Global(JobCommand::Speed).format()?,
         )])
     }
 
     fn batch_button(&self) -> Result<Vec<InlineKeyboardButton>> {
-        let id = self.id();
         let btn = InlineKeyboardButton::callback(
             format!("Batch {}", self.batch),
             Callback::DoNothing.format()?,
         );
 
-        let up = InlineKeyboardButton::callback(
-            "+",
-            Callback::global(id, JobCommand::BatchUp).format()?,
-        );
+        let up =
+            InlineKeyboardButton::callback("+", Callback::Global(JobCommand::BatchUp).format()?);
 
-        let down = InlineKeyboardButton::callback(
-            "-",
-            Callback::global(id, JobCommand::BatchDown).format()?,
-        );
+        let down =
+            InlineKeyboardButton::callback("-", Callback::Global(JobCommand::BatchDown).format()?);
 
         Ok(if self.batch == 1 {
             vec![btn, up]
@@ -130,21 +121,16 @@ impl PumpmanGlobal {
     }
 
     fn tx_fee_button(&self) -> Result<Vec<InlineKeyboardButton>> {
-        let id = self.id();
         let btn = InlineKeyboardButton::callback(
             format!("Tx Fee {}", self.tx_fee.round(6)),
             Callback::DoNothing.format()?,
         );
 
-        let up = InlineKeyboardButton::callback(
-            "+",
-            Callback::global(id, JobCommand::TxFeeUp).format()?,
-        );
+        let up =
+            InlineKeyboardButton::callback("+", Callback::Global(JobCommand::TxFeeUp).format()?);
 
-        let down = InlineKeyboardButton::callback(
-            "-",
-            Callback::global(id, JobCommand::TxFeeDown).format()?,
-        );
+        let down =
+            InlineKeyboardButton::callback("-", Callback::Global(JobCommand::TxFeeDown).format()?);
 
         Ok(
             if self.tx_fee.round(6) == BigDecimal::from_str("0.000045")?.round(6) {
@@ -156,21 +142,16 @@ impl PumpmanGlobal {
     }
 
     fn amount_button(&self) -> Result<Vec<InlineKeyboardButton>> {
-        let id = self.id();
         let btn = InlineKeyboardButton::callback(
             format!("Bump Amount {} SOL", self.amount.round(3)),
             Callback::DoNothing.format()?,
         );
 
-        let up = InlineKeyboardButton::callback(
-            "+",
-            Callback::global(id, JobCommand::AmountUp).format()?,
-        );
+        let up =
+            InlineKeyboardButton::callback("+", Callback::Global(JobCommand::AmountUp).format()?);
 
-        let down = InlineKeyboardButton::callback(
-            "-",
-            Callback::global(id, JobCommand::AmountDown).format()?,
-        );
+        let down =
+            InlineKeyboardButton::callback("-", Callback::Global(JobCommand::AmountDown).format()?);
 
         Ok(
             if self.amount.round(3) == BigDecimal::from_str("0.01")?.round(3) {

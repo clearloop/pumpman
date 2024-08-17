@@ -53,7 +53,7 @@ impl Command {
             .reply_markup(ReplyMarkup::inline_kb(vec![vec![
                 InlineKeyboardButton::callback(
                     format!("Withdraw (balance: {balance} SOL)"),
-                    Callback::Withdraw(msg.chat.id.0).format()?,
+                    Callback::Withdraw.format()?,
                 ),
             ]]))
             .await?;

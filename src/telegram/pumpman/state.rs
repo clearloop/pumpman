@@ -3,25 +3,23 @@ use crate::telegram::{
     Result,
 };
 use serde::{Deserialize, Serialize};
-use solana_sdk::pubkey::Pubkey;
 use teloxide::{
     payloads::SendMessageSetters, prelude::Message, requests::Requester, types::ParseMode, Bot,
 };
 
 const PUMPFUN_BASE: &str = "https://pump.fun/";
 
-#[derive(Clone, Default, Serialize, Deserialize)]
+#[derive(Clone, Default, Serialize, Deserialize, PartialEq)]
 pub enum State {
     #[default]
     Start,
-    /// Received pubkey
-    Coin(Pubkey),
+    BackToList,
 }
 
 /// Handle any message
-pub async fn any(
+pub async fn info_job(
     bot: Bot,
-    _dialogue: BotDialogue,
+    dialogue: BotDialogue,
     context: PumpmanContext,
     msg: Message,
 ) -> Result<()> {
@@ -40,7 +38,8 @@ pub async fn any(
 
     let tgid = msg.chat.id.0;
     let mint = text.trim_start_matches(PUMPFUN_BASE);
-    let job = context.job(tgid, &mint).await?;
+    let job = context.job(tgid, mint).await?;
+    dialogue.update(State::Start).await?;
     bot.send_message(msg.chat.id, message::job(&context, &job).await?)
         .parse_mode(ParseMode::Html)
         .reply_markup(job.markup()?)

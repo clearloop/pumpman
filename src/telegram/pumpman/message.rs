@@ -3,13 +3,14 @@ use crate::{
     config,
     model::{Pumpman, PumpmanGlobal},
     sol::pump::SOL_SCALE,
-    telegram::{pumpman::PumpmanContext, Result},
+    telegram::{
+        pumpman::{callback::Callback, PumpmanContext},
+        Result,
+    },
 };
 use bigdecimal::BigDecimal;
 use solana_sdk::{pubkey::Pubkey, signer::Signer};
 use teloxide::types::{InlineKeyboardButton, InlineKeyboardMarkup};
-
-use super::callback::{Callback, JobCommand};
 
 /// message while entring group
 pub const ENTER_GROUP: &str = r#"
@@ -30,7 +31,7 @@ Your Wallet Address: <code>{}</code>
 Please paste a pumpfun link in the chat, for example: <code>https://pump.fun/8CTjSbj6h3pAMx1UJcQXLwA4KXAwRF6nQ1JVMkBjpump</code>
 "#,
         efee.round(4),
-        wallet.to_string(),
+        wallet
     )
 }
 
@@ -105,7 +106,7 @@ pub async fn list_markup(
         let coin = context.client.coin(&job.mint, false, redis).await?;
         kbs.push(vec![InlineKeyboardButton::callback(
             format!("{} (${})", coin.name, coin.symbol),
-            Callback::job(job.id(), JobCommand::ShowJob).format()?,
+            Callback::ShowJob(job.id()).format()?,
         )]);
     }
 
@@ -130,7 +131,7 @@ The current balance <code>{} SOL</code> can bump ${} for {}.
         coin.mint,
         coin.name,
         coin.symbol,
-        pubkey.to_string(),
+        pubkey,
         BigDecimal::from(balance) / SOL_SCALE,
         coin.symbol,
         job.duration(&context.global, balance)

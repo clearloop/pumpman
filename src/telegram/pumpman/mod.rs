@@ -1,3 +1,4 @@
+use callback::Callback;
 use command::Command;
 pub use context::PumpmanContext;
 use state::State;
@@ -38,9 +39,9 @@ pub async fn start(bot: &Bot, context: PumpmanContext, redis: String) -> anyhow:
 
     let message = Update::filter_message()
         .branch(command)
-        .branch(dptree::endpoint(state::any));
+        .branch(dptree::endpoint(state::info_job));
 
-    let callback = Update::filter_callback_query().branch(dptree::endpoint(callback::handle));
+    let callback = Update::filter_callback_query().branch(dptree::endpoint(Callback::handle));
 
     let schema = dialogue::enter::<Update, ErasedStorage<State>, State, _>()
         .branch(group)
