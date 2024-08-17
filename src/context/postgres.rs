@@ -18,6 +18,7 @@ const CREATE_TABLES: &[&str] = &[
     include_str!("../../sql/users.sql"),
     include_str!("../../sql/takeovers.sql"),
     include_str!("../../sql/pumpmen.sql"),
+    include_str!("../../sql/pumpman_global.sql"),
 ];
 
 /// Pooled connection

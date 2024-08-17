@@ -47,4 +47,15 @@ diesel::table! {
     }
 }
 
+diesel::table! {
+    pumpman_global (id) {
+        id -> Int8,
+        owner -> Int8,
+        batch -> BigInt,
+        tx_fee -> Decimal,
+        amount -> Decimal,
+        speed -> Int8,
+    }
+}
+
 diesel::allow_tables_to_appear_in_same_query!(coins, takeovers, users, pumpmen);

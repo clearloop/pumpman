@@ -1,6 +1,6 @@
 use crate::{
-    config::PumpmanGlobal,
-    model::{pump::Coin, Pumpman},
+    config,
+    model::{pump::Coin, Pumpman, PumpmanGlobal},
     sol::pump::SOL_SCALE,
 };
 use bigdecimal::BigDecimal;
@@ -12,15 +12,15 @@ Only support private chats atm ))
 "#;
 
 /// Send menu message
-pub fn menu(global: &PumpmanGlobal, wallet: Pubkey) -> String {
-    let efee = 10 * 60 / global.speed * global.total_fee();
+pub fn menu(global: &config::PumpmanGlobal, pglobal: &PumpmanGlobal, wallet: Pubkey) -> String {
+    let efee = 10 * 60 / pglobal.speed * global.total_fee();
     format!(
         r#"
 The easist way to keep your token staying on the first page of PumpFun!
 
 Total /fees of bumping a token for 10 mins - <code>{} SOL</code>
 
-Your Bot Address: <code>{}</code>
+Your Wallet Address: <code>{}</code>
 
 Please paste a pumpfun link in the chat, for example: <code>https://pump.fun/8CTjSbj6h3pAMx1UJcQXLwA4KXAwRF6nQ1JVMkBjpump</code>
 "#,
@@ -52,9 +52,9 @@ Duration between each bump transaction.
 }
 
 /// Message the details of the fees
-pub fn fees(global: &PumpmanGlobal) -> String {
-    let pf_fee = global.amount.clone() / 50u32;
-    let fee = pf_fee.clone() + &global.tx_fee + &global.fee;
+pub fn fees(global: &config::PumpmanGlobal, pglobal: &PumpmanGlobal) -> String {
+    let pf_fee = pglobal.amount.clone() / 50u32;
+    let fee = pf_fee.clone() + &pglobal.tx_fee + &global.fee;
 
     format!(
         r#"
@@ -72,8 +72,8 @@ no service fees applied on that token anymore!
 "#,
         fee.round(6),
         pf_fee.round(6),
-        global.amount.round(4),
-        global.tx_fee.round(6),
+        pglobal.amount.round(4),
+        pglobal.tx_fee.round(6),
         global.fee.round(4),
         global.threshold.round(2),
     )
@@ -86,7 +86,7 @@ https://pump.fun/8CTjSbj6h3pAMx1UJcQXLwA4KXAwRF6nQ1JVMkBjpump
 "#;
 
 pub fn job(
-    global: &PumpmanGlobal,
+    global: &config::PumpmanGlobal,
     job: &Pumpman,
     coin: Coin,
     wallet: Pubkey,
@@ -96,7 +96,7 @@ pub fn job(
         r#"
 Job <a href="https://pump.fun/{}">{} (${})</a>
 
-Your Bot Address: <code>{}</code>
+Your Wallet Address: <code>{}</code>
 
 The current balance <code>{} SOL</code> can bump ${} for {}.
 "#,

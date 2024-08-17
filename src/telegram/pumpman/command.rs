@@ -44,7 +44,8 @@ impl Command {
         let balance = (BigDecimal::from(context.client.rpc().get_balance(&pubkey).await?)
             / SOL_SCALE)
             .round(6);
-        bot.send_message(msg.chat.id, message::menu(&context.global, pubkey))
+        let global = context.global(msg.chat.id.0).await?;
+        bot.send_message(msg.chat.id, message::menu(&context.global, &global, pubkey))
             .parse_mode(ParseMode::Html)
             .reply_markup(ReplyMarkup::inline_kb(vec![vec![
                 InlineKeyboardButton::callback(
@@ -58,15 +59,18 @@ impl Command {
 
     /// Send config to users
     pub async fn config(bot: Bot, context: PumpmanContext, msg: Message) -> Result<()> {
-        bot.send_message(msg.chat.id, message::config(&context.global))
+        let global = context.global(msg.chat.id.0).await?;
+        bot.send_message(msg.chat.id, message::config(&global))
             .parse_mode(ParseMode::Html)
+            .reply_markup(global.markup()?)
             .await?;
         Ok(())
     }
 
     /// Send service fee details to users
     pub async fn fees(bot: Bot, context: PumpmanContext, msg: Message) -> Result<()> {
-        bot.send_message(msg.chat.id, message::fees(&context.global))
+        let global = context.global(msg.chat.id.0).await?;
+        bot.send_message(msg.chat.id, message::fees(&context.global, &global))
             .parse_mode(ParseMode::Html)
             .await?;
         Ok(())

@@ -1,7 +1,7 @@
 use crate::{
-    config::PumpmanGlobal,
-    model::{Pumpman, User},
-    schema::{pumpmen, users},
+    config,
+    model::{Pumpman, PumpmanGlobal, User},
+    schema::{pumpman_global, pumpmen, users},
     Context,
 };
 use anyhow::Result;
@@ -16,12 +16,12 @@ pub struct PumpmanContext {
     /// command context
     pub context: Context,
     /// cutomized data in context
-    pub global: Arc<PumpmanGlobal>,
+    pub global: Arc<config::PumpmanGlobal>,
 }
 
 impl PumpmanContext {
     /// Create new wrapped context
-    pub fn new(context: Context, global: PumpmanGlobal) -> Self {
+    pub fn new(context: Context, global: config::PumpmanGlobal) -> Self {
         Self {
             context,
             global: Arc::new(global),
@@ -54,6 +54,26 @@ impl PumpmanContext {
         Keypair::from_bytes(&bytes).map_err(Into::into)
     }
 
+    pub async fn global(&self, tgid: i64) -> Result<PumpmanGlobal> {
+        let postgres = &mut self.context.postgres().await?;
+        if let Some(global) = pumpman_global::table
+            .filter(pumpman_global::owner.eq(tgid))
+            .first::<PumpmanGlobal>(postgres)
+            .await
+            .optional()?
+        {
+            Ok(global)
+        } else {
+            let global = PumpmanGlobal::new(&self.global, tgid);
+            diesel::insert_into(pumpman_global::table)
+                .values(&global)
+                .execute(postgres)
+                .await?;
+
+            Ok(global)
+        }
+    }
+
     /// Get wallet address from telegram user id
     pub async fn job(&self, tgid: i64, mint: &str) -> Result<Pumpman> {
         let postgres = &mut self.context.postgres().await?;
@@ -66,7 +86,7 @@ impl PumpmanContext {
         {
             Ok(job)
         } else {
-            let job = Pumpman::new(&self.global, tgid, mint.to_string());
+            let job = self.global(tgid).await?.generate(mint);
             diesel::insert_into(pumpmen::table)
                 .values(&job)
                 .execute(postgres)
@@ -82,6 +102,16 @@ impl PumpmanContext {
         pumpmen::table
             .filter(pumpmen::id.eq(id))
             .first::<Pumpman>(postgres)
+            .await
+            .map_err(Into::into)
+    }
+
+    /// Get job by job id
+    pub async fn global_by_id(&self, id: i64) -> Result<PumpmanGlobal> {
+        let postgres = &mut self.context.postgres().await?;
+        pumpman_global::table
+            .filter(pumpman_global::id.eq(id))
+            .first::<PumpmanGlobal>(postgres)
             .await
             .map_err(Into::into)
     }
