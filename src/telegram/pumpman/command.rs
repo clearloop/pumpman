@@ -34,6 +34,9 @@ pub enum Command {
     /// Show the details of service fee
     #[command(description = "Show the details of service fees.")]
     Fees,
+    /// List all running jobs
+    #[command(description = "List all running jobs")]
+    List,
 }
 
 impl Command {
@@ -72,6 +75,16 @@ impl Command {
         let global = context.global(msg.chat.id.0).await?;
         bot.send_message(msg.chat.id, message::fees(&context.global, &global))
             .parse_mode(ParseMode::Html)
+            .await?;
+        Ok(())
+    }
+
+    /// List all jobs
+    pub async fn list(bot: Bot, context: PumpmanContext, msg: Message) -> Result<()> {
+        let jobs = context.jobs(msg.chat.id.0).await?;
+
+        bot.send_message(msg.chat.id, message::list(&jobs))
+            .reply_markup(message::list_markup(&context, &jobs).await?)
             .await?;
         Ok(())
     }

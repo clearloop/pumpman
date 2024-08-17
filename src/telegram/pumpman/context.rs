@@ -74,6 +74,16 @@ impl PumpmanContext {
         }
     }
 
+    /// Get job by job id
+    pub async fn global_by_id(&self, id: i64) -> Result<PumpmanGlobal> {
+        let postgres = &mut self.context.postgres().await?;
+        pumpman_global::table
+            .filter(pumpman_global::id.eq(id))
+            .first::<PumpmanGlobal>(postgres)
+            .await
+            .map_err(Into::into)
+    }
+
     /// Get wallet address from telegram user id
     pub async fn job(&self, tgid: i64, mint: &str) -> Result<Pumpman> {
         let postgres = &mut self.context.postgres().await?;
@@ -106,12 +116,11 @@ impl PumpmanContext {
             .map_err(Into::into)
     }
 
-    /// Get job by job id
-    pub async fn global_by_id(&self, id: i64) -> Result<PumpmanGlobal> {
+    pub async fn jobs(&self, tgid: i64) -> Result<Vec<Pumpman>> {
         let postgres = &mut self.context.postgres().await?;
-        pumpman_global::table
-            .filter(pumpman_global::id.eq(id))
-            .first::<PumpmanGlobal>(postgres)
+        pumpmen::table
+            .filter(pumpmen::owner.eq(tgid))
+            .load(postgres)
             .await
             .map_err(Into::into)
     }

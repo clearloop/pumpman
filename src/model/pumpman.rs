@@ -110,7 +110,8 @@ impl Pumpman {
         ]))
     }
 
-    fn id(&self) -> i64 {
+    /// Get the id of this job
+    pub fn id(&self) -> i64 {
         self.id.unwrap_or_default()
     }
 

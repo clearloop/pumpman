@@ -105,11 +105,3 @@ pub struct PumpmanGlobal {
     /// bump fee threshold per token
     pub threshold: BigDecimal,
 }
-
-impl PumpmanGlobal {
-    /// Total fee per bump
-    pub fn total_fee(&self) -> BigDecimal {
-        let pf_fee = self.amount.clone() / 50u32;
-        pf_fee.clone() + &self.tx_fee + &self.fee
-    }
-}

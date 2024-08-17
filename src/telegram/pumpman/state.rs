@@ -1,17 +1,12 @@
-use crate::{
-    api::{PumpApi, SolRpcApi},
-    telegram::{
-        pumpman::{message::INVALID_PUMPFUN_LINK, BotDialogue, PumpmanContext},
-        Result,
-    },
+use crate::telegram::{
+    pumpman::{message, message::INVALID_PUMPFUN_LINK, BotDialogue, PumpmanContext},
+    Result,
 };
 use serde::{Deserialize, Serialize};
-use solana_sdk::{pubkey::Pubkey, signer::Signer};
+use solana_sdk::pubkey::Pubkey;
 use teloxide::{
     payloads::SendMessageSetters, prelude::Message, requests::Requester, types::ParseMode, Bot,
 };
-
-use super::message;
 
 const PUMPFUN_BASE: &str = "https://pump.fun/";
 
@@ -43,22 +38,13 @@ pub async fn any(
         return Ok(());
     }
 
-    let redis = &mut context.redis()?;
-    let mint = text.trim_start_matches(PUMPFUN_BASE);
-    let coin = context.client.coin(mint, true, redis).await?;
     let tgid = msg.chat.id.0;
-    let wallet = context.wallet(msg.chat.id.0).await?;
-    let pubkey = wallet.pubkey();
-    let balance = context.client.rpc().get_balance(&pubkey).await?;
-    let job = context.job(tgid, &pubkey.to_string()).await?;
-
-    bot.send_message(
-        msg.chat.id,
-        message::job(&context.global, &job, coin, pubkey, balance),
-    )
-    .parse_mode(ParseMode::Html)
-    .reply_markup(job.markup()?)
-    .await?;
+    let mint = text.trim_start_matches(PUMPFUN_BASE);
+    let job = context.job(tgid, &mint).await?;
+    bot.send_message(msg.chat.id, message::job(&context, &job).await?)
+        .parse_mode(ParseMode::Html)
+        .reply_markup(job.markup()?)
+        .await?;
 
     Ok(())
 }

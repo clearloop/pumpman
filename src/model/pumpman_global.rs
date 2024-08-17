@@ -78,6 +78,12 @@ impl PumpmanGlobal {
         }
     }
 
+    /// Total fee per bump
+    pub fn total_fee(&self, fee: &BigDecimal) -> BigDecimal {
+        let pf_fee = self.amount.clone() / 50u32;
+        pf_fee.clone() + &self.tx_fee + fee
+    }
+
     /// Show the markup from the current config
     pub fn markup(&self) -> Result<InlineKeyboardMarkup> {
         Ok(InlineKeyboardMarkup::new(vec![

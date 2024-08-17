@@ -1,7 +1,8 @@
 use std::str::FromStr;
 
-use super::{BotDialogue, PumpmanContext};
+use super::{message, BotDialogue, PumpmanContext};
 use crate::{
+    model::Pumpman,
     schema::{pumpman_global, pumpmen},
     telegram::Result,
     utils::base64,
@@ -11,8 +12,11 @@ use diesel::ExpressionMethods;
 use diesel_async::RunQueryDsl;
 use serde::{Deserialize, Serialize};
 use teloxide::{
-    payloads::EditMessageReplyMarkupSetters, prelude::Message, requests::Requester,
-    types::CallbackQuery, Bot,
+    payloads::{EditMessageReplyMarkupSetters, EditMessageTextSetters},
+    prelude::Message,
+    requests::Requester,
+    types::{CallbackQuery, InlineKeyboardButton, ParseMode},
+    Bot,
 };
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -21,6 +25,7 @@ pub enum Callback {
     Global(CallbackGlobal),
     ListJobs,
     DoNothing,
+    ShowJob,
     Withdraw(i64),
 }
 
@@ -61,7 +66,8 @@ impl Callback {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CallbackJob {
-    job: i64,
+    /// pumpman id
+    pub job: i64,
     command: JobCommand,
 }
 
@@ -78,7 +84,9 @@ impl CallbackJob {
             JobCommand::TxFeeDown => job.tx_fee = job.tx_fee - BigDecimal::from_str("0.000010")?,
             JobCommand::TxFeeUp => job.tx_fee = job.tx_fee + BigDecimal::from_str("0.000010")?,
             JobCommand::Speed => job.toggle_speed(),
-        }
+            JobCommand::ShowJob => return self.show_job(bot, context, msg, job).await,
+            JobCommand::Back => return self.back(bot, context, msg).await,
+        };
 
         diesel::update(pumpmen::table)
             .filter(pumpmen::id.eq(job.id.unwrap_or_default()))
@@ -88,6 +96,46 @@ impl CallbackJob {
 
         bot.edit_message_reply_markup(msg.chat.id, msg.id)
             .reply_markup(job.markup()?)
+            .await?;
+        Ok(())
+    }
+
+    /// Only back to the list atm
+    async fn back(&self, bot: Bot, context: PumpmanContext, msg: Message) -> Result<()> {
+        let chat = msg.chat.id;
+        let message = msg.id;
+        let jobs = context.jobs(msg.chat.id.0).await?;
+        let markup = message::list_markup(&context, &jobs).await?;
+
+        bot.edit_message_text(chat, message, message::list(&jobs))
+            .parse_mode(ParseMode::Html)
+            .reply_markup(markup)
+            .await?;
+
+        Ok(())
+    }
+
+    async fn show_job(
+        &self,
+        bot: Bot,
+        context: PumpmanContext,
+        msg: Message,
+        job: Pumpman,
+    ) -> Result<()> {
+        let mut markup = job.markup()?;
+        markup
+            .inline_keyboard
+            .push(vec![InlineKeyboardButton::callback(
+                "Back",
+                Callback::job(job.id(), JobCommand::Back).format()?,
+            )]);
+
+        let chat = msg.chat.id;
+        let message = msg.id;
+
+        bot.edit_message_text(chat, message, message::job(&context, &job).await?)
+            .parse_mode(ParseMode::Html)
+            .reply_markup(markup)
             .await?;
         Ok(())
     }
@@ -117,7 +165,7 @@ impl CallbackGlobal {
             }
             JobCommand::Speed => global.toggle_speed(),
             _ => {}
-        }
+        };
 
         diesel::update(pumpman_global::table)
             .filter(pumpman_global::owner.eq(global.owner))
@@ -144,6 +192,16 @@ pub enum JobCommand {
     TxFeeUp,
     TxFeeDown,
     Speed,
+    Back,
+    ShowJob,
+}
+
+/// Back to previous state
+#[derive(Debug, Serialize, Deserialize, Default)]
+pub enum Back {
+    /// Back to list
+    #[default]
+    List,
 }
 
 pub async fn handle(

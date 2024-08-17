@@ -1,10 +1,15 @@
 use crate::{
+    api::{PumpApi, SolRpcApi},
     config,
-    model::{pump::Coin, Pumpman, PumpmanGlobal},
+    model::{Pumpman, PumpmanGlobal},
     sol::pump::SOL_SCALE,
+    telegram::{pumpman::PumpmanContext, Result},
 };
 use bigdecimal::BigDecimal;
-use solana_sdk::pubkey::Pubkey;
+use solana_sdk::{pubkey::Pubkey, signer::Signer};
+use teloxide::types::{InlineKeyboardButton, InlineKeyboardMarkup};
+
+use super::callback::{Callback, JobCommand};
 
 /// message while entring group
 pub const ENTER_GROUP: &str = r#"
@@ -13,12 +18,12 @@ Only support private chats atm ))
 
 /// Send menu message
 pub fn menu(global: &config::PumpmanGlobal, pglobal: &PumpmanGlobal, wallet: Pubkey) -> String {
-    let efee = 10 * 60 / pglobal.speed * global.total_fee();
+    let efee = 10 * 60 / pglobal.speed * pglobal.total_fee(&global.fee);
     format!(
         r#"
 The easist way to keep your token staying on the first page of PumpFun!
 
-Total /fees of bumping a token for 10 mins - <code>{} SOL</code>
+Total /fees of bumping a token for 10 mins with /config - <code>{} SOL</code>
 
 Your Wallet Address: <code>{}</code>
 
@@ -85,14 +90,36 @@ Invalid PumpFun link, for example:
 https://pump.fun/8CTjSbj6h3pAMx1UJcQXLwA4KXAwRF6nQ1JVMkBjpump
 "#;
 
-pub fn job(
-    global: &config::PumpmanGlobal,
-    job: &Pumpman,
-    coin: Coin,
-    wallet: Pubkey,
-    balance: u64,
-) -> String {
-    format!(
+/// List all jobs
+pub fn list(jobs: &[Pumpman]) -> String {
+    format!("you current have {} jobs running", jobs.len())
+}
+
+pub async fn list_markup(
+    context: &PumpmanContext,
+    jobs: &[Pumpman],
+) -> Result<InlineKeyboardMarkup> {
+    let redis = &mut context.redis()?;
+    let mut kbs = Vec::new();
+    for job in jobs {
+        let coin = context.client.coin(&job.mint, false, redis).await?;
+        kbs.push(vec![InlineKeyboardButton::callback(
+            format!("{} (${})", coin.name, coin.symbol),
+            Callback::job(job.id(), JobCommand::ShowJob).format()?,
+        )]);
+    }
+
+    Ok(InlineKeyboardMarkup::new(kbs))
+}
+
+pub async fn job(context: &PumpmanContext, job: &Pumpman) -> Result<String> {
+    let redis = &mut context.redis()?;
+    let coin = context.client.coin(&job.mint, true, redis).await?;
+    let wallet = context.wallet(job.owner).await?;
+    let pubkey = wallet.pubkey();
+    let balance = context.client.rpc().get_balance(&pubkey).await?;
+
+    Ok(format!(
         r#"
 Job <a href="https://pump.fun/{}">{} (${})</a>
 
@@ -103,9 +130,9 @@ The current balance <code>{} SOL</code> can bump ${} for {}.
         coin.mint,
         coin.name,
         coin.symbol,
-        wallet.to_string(),
+        pubkey.to_string(),
         BigDecimal::from(balance) / SOL_SCALE,
         coin.symbol,
-        job.duration(global, balance)
-    )
+        job.duration(&context.global, balance)
+    ))
 }
