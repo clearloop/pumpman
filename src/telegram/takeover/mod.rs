@@ -1,8 +1,15 @@
 //! Telegram takeover bot
 
-use crate::context::Context;
-pub use alert::alert;
+use crate::{
+    api::{DexScreenerApi, PumpApi, SolRpcApi},
+    config,
+    context::{Context, TaskCache},
+    model::{Alert, AlertTitle},
+};
+use bigdecimal::BigDecimal;
+use redis::Commands;
 use std::sync::Arc;
+use teloxide::Bot;
 use teloxide::{
     dispatching::dialogue::{self, serializer::Json, ErasedStorage, RedisStorage, Storage},
     dptree::case,
@@ -13,14 +20,10 @@ use teloxide::{
 };
 use {command::Command, state::State};
 
-mod alert;
 mod callback;
 mod command;
 mod context;
-mod group;
-mod markup;
 mod message;
-mod result;
 mod state;
 
 type TakeoverDialogue = Dialogue<State, ErasedStorage<State>>;
@@ -52,8 +55,7 @@ pub async fn start(bot: &str, context: Context, redis: String) -> anyhow::Result
 
     let group = Update::filter_message()
         .filter(|msg: Message| msg.chat.is_group())
-        .filter_command::<Command>()
-        .branch(dptree::endpoint(group::unsupport));
+        .branch(dptree::endpoint(command::unsupport));
 
     let callback =
         Update::filter_callback_query().branch(case![State::Start].endpoint(callback::takeover));
@@ -83,6 +85,60 @@ async fn settings(bot: &Bot) -> anyhow::Result<()> {
         .await?;
     bot.set_my_commands(Command::bot_commands().into_iter().collect::<Vec<_>>())
         .await?;
+
+    Ok(())
+}
+
+/// pumpfun soldout alert
+pub async fn alert(
+    config: &config::Takeover,
+    context: &Context,
+    bot: &Bot,
+    mint: String,
+) -> anyhow::Result<()> {
+    let redis = &mut context.redis()?;
+    let client = context.client.clone();
+
+    let key = TaskCache::DevSoldOut(&mint);
+    if redis.exists(&key)? {
+        return Ok(());
+    }
+
+    // filter out mc less than $8k
+    let coin = client.coin(&mint, false, redis).await?;
+    if let Some(mc) = &coin.usd_market_cap {
+        if *mc < BigDecimal::from(config.marketcap) {
+            return Ok(());
+        }
+    }
+
+    // check if dev is soldout
+    let (_, soldout) = client
+        .soldout(&coin.mint, &coin.creator, false, redis)
+        .await?;
+
+    if !soldout {
+        return Ok(());
+    }
+
+    // check holders amount
+    let holders = client
+        .top_holders(&mint, false, redis)
+        .await?
+        .skip_bc(&coin.associated_bonding_curve);
+
+    if holders.len() < config.holders {
+        return Ok(());
+    }
+
+    let pairs = client.pairs(&mint, false, redis).await?;
+    context.update_coin(coin.clone()).await?;
+    Alert::new(AlertTitle::DevSoldOut, coin, soldout)
+        .pairs(pairs)
+        .holders(holders)
+        .alert(bot, &config.subscription)
+        .await?;
+    redis.set(key, true)?;
 
     Ok(())
 }

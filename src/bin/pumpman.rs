@@ -10,9 +10,6 @@ pub struct Opt {
     /// Path of replika config
     #[clap(short, long, default_value = "config.toml")]
     config: PathBuf,
-    /// If update cache
-    #[clap(short, long)]
-    update: bool,
     /// The verbosity level.
     #[clap(short, long, action = clap::ArgAction::Count)]
     pub verbose: u8,
