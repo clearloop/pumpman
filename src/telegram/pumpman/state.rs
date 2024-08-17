@@ -42,7 +42,7 @@ pub async fn info_job(
     dialogue.update(State::Start).await?;
     bot.send_message(msg.chat.id, message::job(&context, &job).await?)
         .parse_mode(ParseMode::Html)
-        .reply_markup(job.markup()?)
+        .reply_markup(job.markup(&context.global)?)
         .await?;
 
     Ok(())

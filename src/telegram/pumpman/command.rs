@@ -65,7 +65,7 @@ impl Command {
         let global = context.global(msg.chat.id.0).await?;
         bot.send_message(msg.chat.id, message::config(&global))
             .parse_mode(ParseMode::Html)
-            .reply_markup(global.markup()?)
+            .reply_markup(global.markup(&context.global)?)
             .await?;
         Ok(())
     }

@@ -101,7 +101,7 @@ impl Callback {
     ) -> Result<()> {
         let job = context.job_by_id(id).await?;
         dialogue.update(State::BackToList).await?;
-        let mut markup = job.markup()?;
+        let mut markup = job.markup(&context.global)?;
         markup
             .inline_keyboard
             .push(vec![InlineKeyboardButton::callback(
@@ -162,7 +162,7 @@ impl JobCommand {
             .execute(&mut context.postgres().await?)
             .await?;
 
-        let mut markup = job.markup()?;
+        let mut markup = job.markup(&context.global)?;
         if dialogue.get().await? == Some(State::BackToList) {
             markup
                 .inline_keyboard
@@ -203,7 +203,7 @@ impl JobCommand {
             .await?;
 
         bot.edit_message_reply_markup(msg.chat.id, msg.id)
-            .reply_markup(global.markup()?)
+            .reply_markup(global.markup(&context.global)?)
             .await?;
         Ok(())
     }

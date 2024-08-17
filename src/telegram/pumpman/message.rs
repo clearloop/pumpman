@@ -19,7 +19,7 @@ Only support private chats atm ))
 
 /// Send menu message
 pub fn menu(global: &config::PumpmanGlobal, pglobal: &PumpmanGlobal, wallet: Pubkey) -> String {
-    let efee = 10 * 60 / pglobal.speed * pglobal.total_fee(&global.fee);
+    let efee = 10 * 60 / pglobal.speed * pglobal.total_fee(&global.fee) * pglobal.batch;
     format!(
         r#"
 The easist way to keep your token staying on the first page of PumpFun!
@@ -39,7 +39,7 @@ Please paste a pumpfun link in the chat, for example: <code>https://pump.fun/8CT
 pub fn config(global: &PumpmanGlobal) -> String {
     format!(
         r#"
-Pumpman global config:
+You new created jobs will inherit this config by default.
 
 * SOL Amount per Bump: <code>{} SOL</code>
 A <b>bump transaction</b> is the combination of buy and sell instructions of your token, the

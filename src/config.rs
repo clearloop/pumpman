@@ -104,4 +104,6 @@ pub struct PumpmanGlobal {
     pub fee: BigDecimal,
     /// bump fee threshold per token
     pub threshold: BigDecimal,
+    /// How many bumps to be batched
+    pub batch: i64,
 }

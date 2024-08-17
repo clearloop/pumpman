@@ -1,5 +1,3 @@
-use std::str::FromStr;
-
 use crate::{
     config,
     model::pumpman::{Pumpman, Speed},
@@ -85,11 +83,11 @@ impl PumpmanGlobal {
     }
 
     /// Show the markup from the current config
-    pub fn markup(&self) -> Result<InlineKeyboardMarkup> {
+    pub fn markup(&self, global: &config::PumpmanGlobal) -> Result<InlineKeyboardMarkup> {
         Ok(InlineKeyboardMarkup::new(vec![
-            self.batch_button()?,
-            self.tx_fee_button()?,
-            self.amount_button()?,
+            self.batch_button(global)?,
+            self.tx_fee_button(global)?,
+            self.amount_button(global)?,
             self.speed_button()?,
         ]))
     }
@@ -101,7 +99,7 @@ impl PumpmanGlobal {
         )])
     }
 
-    fn batch_button(&self) -> Result<Vec<InlineKeyboardButton>> {
+    fn batch_button(&self, global: &config::PumpmanGlobal) -> Result<Vec<InlineKeyboardButton>> {
         let btn = InlineKeyboardButton::callback(
             format!("Batch {}", self.batch),
             Callback::DoNothing.format()?,
@@ -113,14 +111,14 @@ impl PumpmanGlobal {
         let down =
             InlineKeyboardButton::callback("-", Callback::Global(JobCommand::BatchDown).format()?);
 
-        Ok(if self.batch == 1 {
+        Ok(if self.batch == global.batch {
             vec![btn, up]
         } else {
             vec![btn, down, up]
         })
     }
 
-    fn tx_fee_button(&self) -> Result<Vec<InlineKeyboardButton>> {
+    fn tx_fee_button(&self, global: &config::PumpmanGlobal) -> Result<Vec<InlineKeyboardButton>> {
         let btn = InlineKeyboardButton::callback(
             format!("Tx Fee {}", self.tx_fee.round(6)),
             Callback::DoNothing.format()?,
@@ -132,16 +130,14 @@ impl PumpmanGlobal {
         let down =
             InlineKeyboardButton::callback("-", Callback::Global(JobCommand::TxFeeDown).format()?);
 
-        Ok(
-            if self.tx_fee.round(6) == BigDecimal::from_str("0.000045")?.round(6) {
-                vec![btn, up]
-            } else {
-                vec![btn, down, up]
-            },
-        )
+        Ok(if self.tx_fee.round(6) == global.tx_fee.round(6) {
+            vec![btn, up]
+        } else {
+            vec![btn, down, up]
+        })
     }
 
-    fn amount_button(&self) -> Result<Vec<InlineKeyboardButton>> {
+    fn amount_button(&self, global: &config::PumpmanGlobal) -> Result<Vec<InlineKeyboardButton>> {
         let btn = InlineKeyboardButton::callback(
             format!("Bump Amount {} SOL", self.amount.round(3)),
             Callback::DoNothing.format()?,
@@ -153,13 +149,11 @@ impl PumpmanGlobal {
         let down =
             InlineKeyboardButton::callback("-", Callback::Global(JobCommand::AmountDown).format()?);
 
-        Ok(
-            if self.amount.round(3) == BigDecimal::from_str("0.01")?.round(3) {
-                vec![btn, up]
-            } else {
-                vec![btn, down, up]
-            },
-        )
+        Ok(if self.amount.round(3) == global.amount.round(3) {
+            vec![btn, up]
+        } else {
+            vec![btn, down, up]
+        })
     }
 
     pub fn toggle_speed(&mut self) {
