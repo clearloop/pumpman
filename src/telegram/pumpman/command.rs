@@ -47,23 +47,26 @@ impl Command {
         let balance = (BigDecimal::from(context.client.rpc().get_balance(&pubkey).await?)
             / SOL_SCALE)
             .round(6);
-        let global = context.global(msg.chat.id.0).await?;
-        bot.send_message(msg.chat.id, message::menu(&context.global, &global, pubkey))
-            .parse_mode(ParseMode::Html)
-            .reply_markup(ReplyMarkup::inline_kb(vec![vec![
-                InlineKeyboardButton::callback(
-                    format!("Withdraw (balance: {balance} SOL)"),
-                    Callback::Withdraw.format()?,
-                ),
-            ]]))
-            .await?;
+
+        bot.send_message(
+            msg.chat.id,
+            message::menu(&context, msg.chat.id.0, &pubkey).await?,
+        )
+        .parse_mode(ParseMode::Html)
+        .reply_markup(ReplyMarkup::inline_kb(vec![vec![
+            InlineKeyboardButton::callback(
+                format!("Withdraw (balance: {balance} SOL)"),
+                Callback::Withdraw.format()?,
+            ),
+        ]]))
+        .await?;
         Ok(())
     }
 
     /// Send config to users
     pub async fn config(bot: Bot, context: PumpmanContext, msg: Message) -> Result<()> {
         let global = context.global(msg.chat.id.0).await?;
-        bot.send_message(msg.chat.id, message::config(&global))
+        bot.send_message(msg.chat.id, message::CONFIG)
             .parse_mode(ParseMode::Html)
             .reply_markup(global.markup(&context.global)?)
             .await?;

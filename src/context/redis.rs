@@ -27,6 +27,7 @@ pub enum Cache<'t> {
     DevSoldOut(&'t str),
     BondingCurve(&'t Pubkey),
     ACA(&'t Pubkey),
+    PumpPriorityFee,
 }
 
 impl<'t> ToRedisArgs for Cache<'t> {
@@ -36,12 +37,14 @@ impl<'t> ToRedisArgs for Cache<'t> {
     {
         match self {
             Self::DevSoldOut(mint) => {
-                format!("task::takeover::soldout::{mint}").write_redis_args(out)
+                format!("task::takeover::soldout::{mint}")
             }
             Self::BondingCurve(mint) => {
-                format!("task::pumpman::bonding_curve::{mint}").write_redis_args(out)
+                format!("task::pumpman::bonding_curve::{mint}")
             }
-            Self::ACA(acc) => format!("task::pumpman::aca::{acc}").write_redis_args(out),
+            Self::ACA(acc) => format!("task::pumpman::aca::{acc}"),
+            Self::PumpPriorityFee => format!("task::pumpman::priority_fee"),
         }
+        .write_redis_args(out)
     }
 }

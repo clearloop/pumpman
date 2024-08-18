@@ -36,16 +36,18 @@ diesel::table! {
 diesel::table! {
     pumpmen (id) {
         id -> Int8,
-        active -> Bool,
-        created_at -> Date,
-        owner -> Int8,
         mint -> Text,
-        tx_fee -> Decimal,
+        owner -> Int8,
+        wallet -> Nullable<Text>,
+        created_at -> Date,
+        active -> Bool,
         amount -> Decimal,
+        priority_fee -> Decimal,
+        slippage -> Int4,
         batch -> Int4,
         speed -> Int4,
         bumps -> BigInt,
-        wallet -> Nullable<Text>,
+
     }
 }
 
@@ -53,11 +55,12 @@ diesel::table! {
     pumpman_global (id) {
         id -> Int8,
         owner -> Int8,
-        tx_fee -> Decimal,
         amount -> Decimal,
+        priority_fee -> Decimal,
+        slippage -> Int4,
         batch -> Int4,
         speed -> Int4,
     }
 }
 
-diesel::allow_tables_to_appear_in_same_query!(coins, takeovers, users, pumpmen, pumpman_global);
+diesel::allow_tables_to_appear_in_same_query!(coins, takeovers, users);

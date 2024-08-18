@@ -1,12 +1,10 @@
-use std::str::FromStr;
-
 use super::{message, state::State, BotDialogue, PumpmanContext};
 use crate::{
+    model::PumpmanJob,
     schema::{pumpman_global, pumpmen},
     telegram::Result,
     utils::base64,
 };
-use bigdecimal::BigDecimal;
 use diesel::ExpressionMethods;
 use diesel_async::RunQueryDsl;
 use serde::{Deserialize, Serialize};
@@ -59,9 +57,12 @@ impl Callback {
         }
     }
 
-    /// Construct callback job
-    pub fn job(job: i64, command: JobCommand) -> Self {
-        Self::Job { job, command }
+    pub fn job(command: JobCommand, job: Option<i64>) -> Self {
+        if let Some(job) = job {
+            Self::Job { job, command }
+        } else {
+            Self::Global(command)
+        }
     }
 
     pub fn from_callback(cb: &CallbackQuery) -> Result<Self> {
@@ -129,8 +130,10 @@ pub enum JobCommand {
     AmountDown,
     BatchUp,
     BatchDown,
-    TxFeeUp,
-    TxFeeDown,
+    PriorityFeeUp,
+    PriorityFeeDown,
+    SlippageUp,
+    SlippageDown,
     Speed,
 }
 
@@ -144,17 +147,7 @@ impl JobCommand {
         job_id: i64,
     ) -> Result<()> {
         let mut job = context.job_by_id(job_id).await?;
-        match self {
-            JobCommand::Start => job.active = true,
-            JobCommand::Stop => job.active = false,
-            JobCommand::AmountDown => job.amount -= BigDecimal::from_str("0.005")?,
-            JobCommand::AmountUp => job.amount += BigDecimal::from_str("0.005")?,
-            JobCommand::BatchDown => job.batch -= 1,
-            JobCommand::BatchUp => job.batch += 1,
-            JobCommand::TxFeeDown => job.tx_fee -= BigDecimal::from_str("0.000010")?,
-            JobCommand::TxFeeUp => job.tx_fee += BigDecimal::from_str("0.000010")?,
-            JobCommand::Speed => job.toggle_speed(),
-        };
+        job.apply_command(&self, &context.global);
 
         diesel::update(pumpmen::table)
             .filter(pumpmen::id.eq(job.id.unwrap_or_default()))
@@ -184,17 +177,8 @@ impl JobCommand {
         context: PumpmanContext,
         msg: Message,
     ) -> Result<()> {
-        let mut global = context.global_by_id(msg.chat.id.0).await?;
-        match self {
-            JobCommand::AmountDown => global.amount -= BigDecimal::from_str("0.005")?,
-            JobCommand::AmountUp => global.amount += BigDecimal::from_str("0.005")?,
-            JobCommand::BatchDown => global.batch -= global.batch,
-            JobCommand::BatchUp => global.batch += 1,
-            JobCommand::TxFeeDown => global.tx_fee -= BigDecimal::from_str("0.000010")?,
-            JobCommand::TxFeeUp => global.tx_fee += BigDecimal::from_str("0.000010")?,
-            JobCommand::Speed => global.toggle_speed(),
-            _ => {}
-        };
+        let mut global = context.global_by_owner(msg.chat.id.0).await?;
+        global.apply_command(&self, &context.global);
 
         diesel::update(pumpman_global::table)
             .filter(pumpman_global::owner.eq(global.owner))
@@ -202,7 +186,8 @@ impl JobCommand {
             .execute(&mut context.postgres().await?)
             .await?;
 
-        bot.edit_message_reply_markup(msg.chat.id, msg.id)
+        bot.edit_message_text(msg.chat.id, msg.id, message::CONFIG)
+            .parse_mode(ParseMode::Html)
             .reply_markup(global.markup(&context.global)?)
             .await?;
         Ok(())

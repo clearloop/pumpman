@@ -1,15 +1,14 @@
 use crate::{
+    api::PUMPFUN_FEE_BASIS,
     config,
-    model::pumpman::{Pumpman, Speed},
-    telegram::{
-        pumpman::callback::{Callback, JobCommand},
-        Result,
-    },
+    model::{Pumpman, PumpmanJob},
+    sol::pump::{accounts::Global, SLIPPAGE_BASIS},
+    telegram::Result,
 };
 use bigdecimal::BigDecimal;
 use diesel::{pg::Pg, prelude::*};
 use serde::{Deserialize, Serialize};
-use teloxide::types::{InlineKeyboardButton, InlineKeyboardMarkup};
+use teloxide::types::InlineKeyboardMarkup;
 use time::OffsetDateTime;
 
 /// Instance of a bump bot
@@ -37,10 +36,12 @@ pub struct PumpmanGlobal {
     pub id: Option<i64>,
     /// Owner of this bump bot
     pub owner: i64,
-    /// Fee for each transaction
-    pub tx_fee: BigDecimal,
     /// Amount for each bump
     pub amount: BigDecimal,
+    /// Fee for each transaction
+    pub priority_fee: BigDecimal,
+    /// global slippage settings
+    pub slippage: i32,
     /// How many bump transactions will be included at once
     pub batch: i32,
     /// Duration for each bump in millis
@@ -53,8 +54,9 @@ impl PumpmanGlobal {
         Self {
             id: None,
             owner,
-            tx_fee: global.tx_fee.clone(),
+            priority_fee: global.priority_fee.clone(),
             amount: global.amount.clone(),
+            slippage: global.slippage,
             batch: 1,
             speed: global.speed,
         }
@@ -68,8 +70,9 @@ impl PumpmanGlobal {
             created_at: OffsetDateTime::now_utc().date(),
             owner: self.owner,
             mint: mint.into(),
-            tx_fee: self.tx_fee.clone(),
+            priority_fee: self.priority_fee.clone(),
             amount: self.amount.clone(),
+            slippage: self.slippage,
             batch: self.batch,
             speed: self.speed,
             bumps: 0,
@@ -77,91 +80,26 @@ impl PumpmanGlobal {
         }
     }
 
-    /// Total fee per bump
-    pub fn total_fee(&self, fee: &BigDecimal) -> BigDecimal {
-        let pf_fee = self.amount.clone() / 50u32;
-        pf_fee.clone() + &self.tx_fee + fee
+    /// * pumpfun fee
+    /// * slippage
+    /// * transaction fee
+    /// * service fee
+    pub fn avg_fee(&self, config: &config::PumpmanGlobal, global: &Global) -> BigDecimal {
+        let pfee = &self.amount * global.fee_basis_points / PUMPFUN_FEE_BASIS;
+        let sfee = &self.amount * self.slippage / SLIPPAGE_BASIS;
+        let fee = &pfee * 2 + &config.service_fee + &sfee;
+
+        fee * self.batch + self.tx_fee()
     }
 
     /// Show the markup from the current config
     pub fn markup(&self, global: &config::PumpmanGlobal) -> Result<InlineKeyboardMarkup> {
         Ok(InlineKeyboardMarkup::new(vec![
             self.batch_button(global)?,
-            self.tx_fee_button(global)?,
+            self.slippage_button()?,
+            self.tx_fee_button()?,
             self.amount_button(global)?,
             self.speed_button()?,
         ]))
-    }
-
-    fn speed_button(&self) -> Result<Vec<InlineKeyboardButton>> {
-        Ok(vec![InlineKeyboardButton::callback(
-            Speed::from(self.speed).format(),
-            Callback::Global(JobCommand::Speed).format()?,
-        )])
-    }
-
-    fn batch_button(&self, global: &config::PumpmanGlobal) -> Result<Vec<InlineKeyboardButton>> {
-        let btn = InlineKeyboardButton::callback(
-            format!("Batch {}", self.batch),
-            Callback::DoNothing.format()?,
-        );
-
-        let up =
-            InlineKeyboardButton::callback("+", Callback::Global(JobCommand::BatchUp).format()?);
-
-        let down =
-            InlineKeyboardButton::callback("-", Callback::Global(JobCommand::BatchDown).format()?);
-
-        Ok(if self.batch == global.batch {
-            vec![btn, up]
-        } else {
-            vec![btn, down, up]
-        })
-    }
-
-    fn tx_fee_button(&self, global: &config::PumpmanGlobal) -> Result<Vec<InlineKeyboardButton>> {
-        let btn = InlineKeyboardButton::callback(
-            format!("Tx Fee {}", self.tx_fee.round(6)),
-            Callback::DoNothing.format()?,
-        );
-
-        let up =
-            InlineKeyboardButton::callback("+", Callback::Global(JobCommand::TxFeeUp).format()?);
-
-        let down =
-            InlineKeyboardButton::callback("-", Callback::Global(JobCommand::TxFeeDown).format()?);
-
-        Ok(if self.tx_fee.round(6) == global.tx_fee.round(6) {
-            vec![btn, up]
-        } else {
-            vec![btn, down, up]
-        })
-    }
-
-    fn amount_button(&self, global: &config::PumpmanGlobal) -> Result<Vec<InlineKeyboardButton>> {
-        let btn = InlineKeyboardButton::callback(
-            format!("Bump Amount {} SOL", self.amount.round(3)),
-            Callback::DoNothing.format()?,
-        );
-
-        let up =
-            InlineKeyboardButton::callback("+", Callback::Global(JobCommand::AmountUp).format()?);
-
-        let down =
-            InlineKeyboardButton::callback("-", Callback::Global(JobCommand::AmountDown).format()?);
-
-        Ok(if self.amount.round(3) == global.amount.round(3) {
-            vec![btn, up]
-        } else {
-            vec![btn, down, up]
-        })
-    }
-
-    pub fn toggle_speed(&mut self) {
-        self.speed = match self.speed {
-            13 => 7,
-            5 => 13,
-            _ => 5,
-        }
     }
 }

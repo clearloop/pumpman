@@ -4,7 +4,10 @@ use crate::{
     api::{DexScreenerApi, PumpApi, SolRpcApi},
     context::Context,
     model::{Alert, AlertTitle},
-    sol::pump::{accounts::BondingCurve, SOL_SCALE},
+    sol::{
+        self,
+        pump::{self, accounts::BondingCurve, SOL_SCALE},
+    },
     Config,
 };
 use anchor_lang::AccountDeserialize;
@@ -51,17 +54,30 @@ impl Opt {
 #[derive(Debug, Subcommand)]
 pub enum Command {
     /// Prints transaction from signature
-    Sig { signature: String },
+    Sig {
+        signature: String,
+    },
     /// Prints metadata of a token
-    Coin { mint: String },
+    Coin {
+        mint: String,
+    },
     /// Prints pairs of a token
-    Dex { mint: String },
+    Dex {
+        mint: String,
+    },
     /// Get alert info of a token
-    Info { mint: String },
+    Info {
+        mint: String,
+    },
     /// Get details of token account
-    TokenAccounts { acc: String, mint: String },
+    TokenAccounts {
+        acc: String,
+        mint: String,
+    },
     /// Get bonding curve of pumpfun coin
-    BondingCurve { bonding_curve: String },
+    BondingCurve {
+        bonding_curve: String,
+    },
     /// Verify signature
     Verify {
         account: String,
@@ -69,15 +85,20 @@ pub enum Command {
         sig: String,
     },
     /// Sign message
-    Sign { message: String },
+    Sign {
+        message: String,
+    },
     /// Simulate bump
     SimBump {
         mint: String,
         amount: BigDecimal,
         payer: PathBuf,
     },
+    PumpFee,
     /// Get balance
-    Balance { address: String },
+    Balance {
+        address: String,
+    },
     /// Init database
     Init,
 }
@@ -167,6 +188,10 @@ impl Command {
                     BigDecimal::from(balance) / SOL_SCALE
                 );
             }
+            Command::PumpFee => {
+                let fee = context.client.priority_fee().await?;
+                println!("pump.fun recent priority fee: {}", fee)
+            }
             Command::SimBump {
                 mint,
                 amount,
@@ -191,7 +216,7 @@ impl Command {
 
                 let fee = context
                     .client
-                    .rpc()
+                    .helius()
                     .get_fee_for_message(tx.message())
                     .await?;
                 println!("Fee {fee} ({} SOL)", BigDecimal::from(fee) / SOL_SCALE);
@@ -202,9 +227,9 @@ impl Command {
                 let resp = context.client.helius().simulate_transaction(&tx).await?;
                 println!("{resp:#?}");
 
-                // let _logs: Vec<pump::events::TradeEvent> =
-                //     sol::parse2(&resp.value.logs.expect("Logs not found"))?;
-                // println!("{logs:#?}");
+                let logs: Vec<pump::events::TradeEvent> =
+                    sol::parse2(&resp.value.logs.expect("Logs not found"))?;
+                println!("{logs:#?}");
             }
         }
 

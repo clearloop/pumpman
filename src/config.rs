@@ -79,14 +79,20 @@ pub struct Pumpman {
 /// Pumpman config context
 #[derive(Serialize, Deserialize, Clone)]
 pub struct PumpmanGlobal {
-    /// Transaction fee in sol
-    pub tx_fee: BigDecimal,
     /// Bump amount in sol
     pub amount: BigDecimal,
+    /// Bump amount step in sol
+    pub amount_step: BigDecimal,
+    /// Priority fee in sol
+    pub priority_fee: BigDecimal,
+    /// Priority fee in sol
+    pub priority_fee_step: BigDecimal,
     /// pumpman service fee per bump
-    pub fee: BigDecimal,
+    pub service_fee: BigDecimal,
     /// bump fee threshold per token
     pub threshold: BigDecimal,
+    /// transaction slippage percent
+    pub slippage: i32,
     /// The max limit of bumps to be batched
     pub batch: i32,
     /// bumping duration in seconds

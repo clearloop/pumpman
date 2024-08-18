@@ -16,9 +16,10 @@ use crate::{
 };
 use anchor_lang::AccountDeserialize;
 use anyhow::Result;
-use bigdecimal::{BigDecimal, ToPrimitive};
+use bigdecimal::{BigDecimal, ToPrimitive, Zero};
 use borsh::BorshSerialize;
 use redis::Connection;
+use solana_client::rpc_response::RpcPrioritizationFee;
 use solana_sdk::{
     account::Account,
     compute_budget::ComputeBudgetInstruction,
@@ -85,7 +86,7 @@ pub trait PumpApi: HttpClient + SolRpcApi {
         let global = self.global().await.unwrap_or(Global::cached());
 
         // create instructions
-        let pf_fee = sol / 100;
+        let pf_fee = sol / 100 * 3;
         let user = payer.pubkey();
         let amount = global.buy(bc.real_sol_reserves, sol)?;
         let buy = Buy::new(amount, sol + pf_fee).ix(&global, *mint, user);
@@ -109,7 +110,18 @@ pub trait PumpApi: HttpClient + SolRpcApi {
             ixs.push(ix);
         }
 
-        ixs.append(&mut vec![buy.clone(), sell.clone()]);
+        ixs.append(&mut vec![
+            buy.clone(),
+            sell.clone(),
+            buy.clone(),
+            sell.clone(),
+            buy.clone(),
+            sell.clone(),
+            buy.clone(),
+            sell.clone(),
+            buy.clone(),
+            sell.clone(),
+        ]);
         ixs.push(ComputeBudgetInstruction::set_compute_unit_limit(640_000));
         ixs.push(ComputeBudgetInstruction::set_compute_unit_price(
             (BigDecimal::from_str("0.000040")? * MICRO_LAMPORTS_PER_LAMPORT / 640_000u64)
@@ -144,5 +156,20 @@ pub trait PumpApi: HttpClient + SolRpcApi {
             return true;
         }
         false
+    }
+
+    async fn priority_fee(&self) -> Result<u64> {
+        let fees: Vec<RpcPrioritizationFee> = self
+            .rpc()
+            .get_recent_prioritization_fees(&[pump::ID])
+            .await?
+            .into_iter()
+            .filter(|f| !f.prioritization_fee.is_zero())
+            .collect();
+
+        let avg_fee =
+            fees.iter().fold(0, |acc, e| acc + e.prioritization_fee) / (fees.len() as u64);
+
+        Ok(avg_fee)
     }
 }

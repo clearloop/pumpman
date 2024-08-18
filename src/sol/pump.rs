@@ -8,6 +8,7 @@ pub use pump::*;
 use serde::Serialize;
 use solana_sdk::{
     instruction::{AccountMeta, Instruction},
+    native_token::LAMPORTS_PER_SOL,
     pubkey,
     pubkey::Pubkey,
 };
@@ -24,8 +25,11 @@ pub static GLOBAL: Pubkey = pubkey!("4wTV1YmiEkRvAtNtsSGPtUrqRYQMe5SKy2uB4Jjaxnj
 /// Total supply of pumpfun coins
 pub const TOTAL_SUPPLY: u64 = 1_000_000_000;
 
+/// Slippage basis
+pub const SLIPPAGE_BASIS: u64 = 100;
+
 /// SOL amount scale
-pub const SOL_SCALE: u64 = 1_000_000_000;
+pub const SOL_SCALE: u64 = LAMPORTS_PER_SOL;
 
 /// Token amount decimals
 pub const TOKEN_DECIMALS: u32 = 6;

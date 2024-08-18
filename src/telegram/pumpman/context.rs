@@ -1,5 +1,5 @@
 use crate::{
-    api::{PumpApi, SolRpcApi, PUMPFUN_FEE_BASIS},
+    api::{PumpApi, SolRpcApi},
     config,
     context::{Cache, Client},
     model::{Pumpman, PumpmanGlobal, User},
@@ -10,9 +10,10 @@ use crate::{
             self,
             accounts::{BondingCurve, Global},
         },
-        utils::{LAMPORTS_PER_SIGNATURE, MICRO_LAMPORTS_PER_LAMPORT},
+        utils::MICRO_LAMPORTS_PER_LAMPORT,
         Lamports,
     },
+    utils::HOUR,
     Context,
 };
 use anyhow::Result;
@@ -109,10 +110,10 @@ impl PumpmanContext {
     }
 
     /// Get job by job id
-    pub async fn global_by_id(&self, id: i64) -> Result<PumpmanGlobal> {
+    pub async fn global_by_owner(&self, id: i64) -> Result<PumpmanGlobal> {
         let postgres = &mut self.context.postgres().await?;
         pumpman_global::table
-            .filter(pumpman_global::id.eq(id))
+            .filter(pumpman_global::owner.eq(id))
             .first::<PumpmanGlobal>(postgres)
             .await
             .map_err(Into::into)
@@ -159,6 +160,19 @@ impl PumpmanContext {
             .map_err(Into::into)
     }
 
+    /// Get priority fee with cache
+    pub async fn priority_fee(&self) -> Result<u64> {
+        let redis = &mut self.redis()?;
+        let key = Cache::PumpPriorityFee;
+        if let Ok(fee) = redis.get(&key) {
+            return Ok(fee);
+        }
+
+        let fee = self.client.priority_fee().await?;
+        redis.set_ex(&key, fee, HOUR)?;
+        Ok(fee)
+    }
+
     /// Create a builder for bump transactions
     async fn bump_builder<'i>(
         &'i self,
@@ -172,7 +186,7 @@ impl PumpmanContext {
             mint: Pubkey::from_str(&job.mint)?,
             wallet: self.wallet(job.owner).await?,
             ixs: Default::default(),
-            units: BumpBuilder::BASIC_UNITS,
+            units: Pumpman::BASIC_UNITS,
         })
     }
 }
@@ -196,13 +210,6 @@ pub struct BumpBuilder<'i> {
 }
 
 impl<'i> BumpBuilder<'i> {
-    const SIGNATURES: u64 = 1;
-    const BASIC_UNITS: u32 = 134;
-    const CACA_UNITS: u32 = 23203;
-    const BUMP_UNITS: u32 = 82872;
-    const TRANSFER_UNITS: u32 = 150;
-    const BUDGET_UNITS: u32 = 300;
-
     pub async fn build(self, client: &Client) -> Result<Transaction> {
         let payer = self.wallet.pubkey();
 
@@ -225,31 +232,34 @@ impl<'i> BumpBuilder<'i> {
         self.ixs.push(system_instruction::transfer(
             &user,
             &treasury,
-            self.config.fee.lamports()? * (self.job.batch as u64),
+            self.config.service_fee.lamports()? * (self.job.batch as u64),
         ));
 
-        self.units += Self::TRANSFER_UNITS;
+        self.units += Pumpman::TRANSFER_UNITS;
         Ok(self)
     }
 
+    /// Default is 200k CU per ix
+    ///
+    /// <https://solana.com/docs/core/fees#compute-unit-limit>
     pub fn ixs_compute_budget(mut self) -> Result<Self> {
-        let lamports =
-            (self.job.tx_fee.lamports()?).saturating_sub(LAMPORTS_PER_SIGNATURE * Self::SIGNATURES);
+        let lamports = self.job.priority_fee.lamports()?;
 
         if lamports.is_zero() {
             return Ok(self);
         }
 
+        let units = self.units();
         self.ixs
-            .push(ComputeBudgetInstruction::set_compute_unit_limit(self.units));
+            .push(ComputeBudgetInstruction::set_compute_unit_limit(units));
         self.ixs
             .push(ComputeBudgetInstruction::set_compute_unit_price(
                 lamports
                     .saturating_mul(MICRO_LAMPORTS_PER_LAMPORT)
-                    .saturating_div(self.units.into()),
+                    .saturating_div(units.into()),
             ));
 
-        self.units += Self::BUDGET_UNITS;
+        self.units += Pumpman::BUDGET_UNITS;
         Ok(self)
     }
 
@@ -272,7 +282,7 @@ impl<'i> BumpBuilder<'i> {
             &self.mint,
             &sol::TOKEN_PROGRAM,
         ));
-        self.units += Self::CACA_UNITS;
+        self.units += Pumpman::CACA_UNITS;
         Ok(self)
     }
 
@@ -285,10 +295,11 @@ impl<'i> BumpBuilder<'i> {
 
         // Calculate bump amount
         let amount = self.global.buy(bc.real_sol_reserves, sol)?;
-        let pfee = sol * self.global.fee_basis_points / PUMPFUN_FEE_BASIS;
-        let buy = pump::Buy::new(amount, sol.saturating_add(pfee)).ix(self.global, self.mint, user);
+        let slippage = sol * (self.job.slippage as u64) / 100;
+        let buy =
+            pump::Buy::new(amount, sol.saturating_add(slippage)).ix(self.global, self.mint, user);
         let sell =
-            pump::Sell::new(amount, sol.saturating_sub(pfee)).ix(self.global, self.mint, user);
+            pump::Sell::new(amount, sol.saturating_sub(slippage)).ix(self.global, self.mint, user);
 
         self.ixs.append(
             &mut vec![vec![buy.clone(), sell.clone()]; self.job.batch as usize]
@@ -296,7 +307,7 @@ impl<'i> BumpBuilder<'i> {
                 .flatten()
                 .collect(),
         );
-        self.units += Self::BUMP_UNITS * (self.job.batch as u32);
+        self.units += Pumpman::BUMP_UNITS * (self.job.batch as u32);
         Ok(self)
     }
 
@@ -311,5 +322,11 @@ impl<'i> BumpBuilder<'i> {
         let bc = client.bonding_curve(&self.mint).await?;
         redis.set_ex(key, borsh::to_vec(&bc)?, self.config.cache.bonding_curve)?;
         Ok(bc)
+    }
+
+    /// Align units to 10_000
+    fn units(&self) -> u32 {
+        let unit = 10_000;
+        self.units + unit - self.units % unit
     }
 }
