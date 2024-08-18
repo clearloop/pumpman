@@ -6,7 +6,7 @@ use anyhow::Result;
 pub use {
     client::Client,
     postgres::{Conn, Postgres},
-    redis::{Redis, TaskCache},
+    redis::{Cache, Redis},
 };
 
 mod client;

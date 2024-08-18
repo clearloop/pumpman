@@ -22,7 +22,7 @@ impl Opt {
 
         // pre-process
         context.init().await?;
-        service::pumpman(&config, context).await
+        service::pumpman(config, context).await
     }
 }
 

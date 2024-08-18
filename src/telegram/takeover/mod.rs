@@ -3,7 +3,7 @@
 use crate::{
     api::{DexScreenerApi, PumpApi, SolRpcApi},
     config,
-    context::{Context, TaskCache},
+    context::{Cache, Context},
     model::{Alert, AlertTitle},
 };
 use bigdecimal::BigDecimal;
@@ -99,12 +99,12 @@ pub async fn alert(
     let redis = &mut context.redis()?;
     let client = context.client.clone();
 
-    let key = TaskCache::DevSoldOut(&mint);
+    let key = Cache::DevSoldOut(&mint);
     if redis.exists(&key)? {
         return Ok(());
     }
 
-    // filter out mc less than $8k
+    // 1. filter out mc less than $8k
     let coin = client.coin(&mint, false, redis).await?;
     if let Some(mc) = &coin.usd_market_cap {
         if *mc < BigDecimal::from(config.marketcap) {
@@ -112,7 +112,7 @@ pub async fn alert(
         }
     }
 
-    // check if dev is soldout
+    // 2. check if dev is soldout
     let (_, soldout) = client
         .soldout(&coin.mint, &coin.creator, false, redis)
         .await?;

@@ -26,7 +26,7 @@ pub trait SolRpcApi {
 
     /// Fetch account data
     async fn data<T: AccountDeserialize>(&self, pubkey: &Pubkey) -> Result<T> {
-        let data = self.rpc().get_account_data(pubkey).await?;
+        let data = self.helius().get_account_data(pubkey).await?;
         T::try_deserialize(&mut data.as_ref()).map_err(Into::into)
     }
 

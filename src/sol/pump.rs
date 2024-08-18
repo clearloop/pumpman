@@ -58,7 +58,7 @@ impl Buy {
     }
 
     /// Convert self to instruction
-    pub fn ix(&self, global: Global, mint: Pubkey, user: Pubkey) -> Instruction {
+    pub fn ix(&self, global: &Global, mint: Pubkey, user: Pubkey) -> Instruction {
         let bc = bonding_curve(&mint);
         Instruction::new_with_bytes(
             pump::ID,
@@ -104,7 +104,7 @@ impl Sell {
     }
 
     /// Convert self to instruction
-    pub fn ix(&self, global: Global, mint: Pubkey, user: Pubkey) -> Instruction {
+    pub fn ix(&self, global: &Global, mint: Pubkey, user: Pubkey) -> Instruction {
         let bc = bonding_curve(&mint);
         Instruction::new_with_bytes(
             pump::ID,

@@ -1,6 +1,14 @@
 // @generated automatically by Diesel CLI.
 
 diesel::table! {
+    users (id) {
+        id -> Int8,
+        tgid -> Int8,
+        wallet -> Text
+    }
+}
+
+diesel::table! {
     coins (id) {
         id -> Int8,
         mint -> Text,
@@ -21,14 +29,6 @@ diesel::table! {
         telegram -> Text,
         twitter -> Nullable<Text>,
         website -> Nullable<Text>,
-    }
-}
-
-diesel::table! {
-    users (id) {
-        id -> Int8,
-        tgid -> Int8,
-        wallet -> Text
     }
 }
 

@@ -2,6 +2,7 @@
 
 use anyhow::Result;
 use redis::{Client, Connection, ToRedisArgs};
+use solana_sdk::pubkey::Pubkey;
 use std::sync::Arc;
 use url::Url;
 
@@ -22,17 +23,25 @@ impl Redis {
 }
 
 /// Redis task cache
-pub enum TaskCache<'t> {
+pub enum Cache<'t> {
     DevSoldOut(&'t str),
+    BondingCurve(&'t Pubkey),
+    ACA(&'t Pubkey),
 }
 
-impl<'t> ToRedisArgs for TaskCache<'t> {
+impl<'t> ToRedisArgs for Cache<'t> {
     fn write_redis_args<W>(&self, out: &mut W)
     where
         W: ?Sized + redis::RedisWrite,
     {
         match self {
-            Self::DevSoldOut(mint) => format!("task::pump::soldout::{mint}").write_redis_args(out),
+            Self::DevSoldOut(mint) => {
+                format!("task::takeover::soldout::{mint}").write_redis_args(out)
+            }
+            Self::BondingCurve(mint) => {
+                format!("task::pumpman::bonding_curve::{mint}").write_redis_args(out)
+            }
+            Self::ACA(acc) => format!("task::pumpman::aca::{acc}").write_redis_args(out),
         }
     }
 }

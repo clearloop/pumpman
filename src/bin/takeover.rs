@@ -22,8 +22,7 @@ impl Opt {
 
         // pre-process
         context.init().await?;
-
-        Takeover::start(&config, context.clone()).await
+        Takeover::start(config, context.clone()).await
     }
 }
 

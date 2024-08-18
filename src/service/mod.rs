@@ -11,17 +11,22 @@ pub use takeover::Takeover;
 use teloxide::Bot;
 use tokio::signal;
 
-// mod pump;
+mod pumpman;
 mod takeover;
 
 /// Start pumpman service
-pub async fn pumpman(config: &Config, context: Context) -> Result<()> {
-    let Some(pumpman) = &config.pumpman else {
+pub async fn pumpman(mut config: Config, context: Context) -> Result<()> {
+    let Some(mut pumpman) = config.pumpman.take() else {
         tracing::error!("pumpman config not found");
         return Ok(());
     };
 
-    let bot = Bot::new(&pumpman.bot);
+    let Some(bot) = pumpman.bot.take() else {
+        tracing::error!("pumpman bot not found");
+        return Ok(());
+    };
+
+    let bot = Bot::new(&bot);
     let context = PumpmanContext::new(context, pumpman.global.clone());
 
     loop {

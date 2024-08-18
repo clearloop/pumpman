@@ -192,12 +192,23 @@ impl Command {
                     )
                     .await?;
 
-                let resp = context.client.helius().simulate_transaction(&tx).await?;
-                println!("{resp:#?}");
+                // let fee = context
+                //     .client
+                //     .rpc()
+                //     .get_fee_for_message(tx.message())
+                //     .await?;
+                // println!("Fee {fee} ({} SOL)", BigDecimal::from(fee) / SOL_SCALE);
 
-                let logs: Vec<pump::events::TradeEvent> =
+                let bytes = bincode::serialize(&tx)?;
+                println!("Size: {}", bytes.len());
+
+                let resp = context.client.helius().simulate_transaction(&tx).await?;
+                // println!("{resp:#?}");
+                println!("{:#?}", resp.value.units_consumed);
+
+                let _logs: Vec<pump::events::TradeEvent> =
                     sol::parse2(&resp.value.logs.expect("Logs not found"))?;
-                println!("{logs:#?}");
+                // println!("{logs:#?}");
             }
         }
 

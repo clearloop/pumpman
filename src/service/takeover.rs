@@ -2,7 +2,7 @@
 
 use crate::{
     config,
-    context::{Context, TaskCache},
+    context::{Cache, Context},
     sol::{
         self,
         pump::{self, events},
@@ -42,22 +42,27 @@ impl Takeover {
     }
 
     /// Start the service
-    pub async fn start(config: &Config, context: Context) -> Result<()> {
-        let Some(takeover) = &config.takeover else {
+    pub async fn start(mut config: Config, context: Context) -> Result<()> {
+        let Some(mut takeover) = config.takeover.take() else {
             tracing::debug!("No config found for takeover service");
             return Ok(());
         };
 
-        let service = Self::new(takeover, context.clone());
+        let Some(bot) = takeover.bot.take() else {
+            tracing::debug!("No bot token found for takeover service");
+            return Ok(());
+        };
+
+        let service = Self::new(&takeover, context.clone());
         loop {
             let (tx, rx) = mpsc::channel::<Vec<String>>(50);
 
             let r = tokio::select! {
                 _ = signal::ctrl_c() => break Ok(()),
                 r = service.sub_pump(config.cluster.ws.as_ref(), tx) => r,
-                r = service.sub_alerts(rx) => r,
+                r = service.sub_alerts(&bot, rx) => r,
                 r = takeover::start(
-                      &takeover.bot,
+                      &bot,
                       context.clone(),
                       format!("{}/15", config.database.redis)
                 ), if takeover.registry => r,
@@ -92,7 +97,7 @@ impl Takeover {
             if let Some(event) = sol::parse::<events::TradeEvent>(&resp.value.logs) {
                 let mint = event.mint.to_string();
 
-                if !redis.exists(TaskCache::DevSoldOut(&mint))? {
+                if !redis.exists(Cache::DevSoldOut(&mint))? {
                     soldout.insert(mint.clone());
                 }
 
@@ -106,8 +111,8 @@ impl Takeover {
     }
 
     /// Start the reporter service
-    pub async fn sub_alerts(&self, mut rx: Receiver<Vec<String>>) -> Result<()> {
-        let bot = Bot::new(self.config.bot.clone());
+    pub async fn sub_alerts(&self, bot: &str, mut rx: Receiver<Vec<String>>) -> Result<()> {
+        let bot = Bot::new(bot);
         tracing::trace!("Starting takeover service ...");
         while let Some(mints) = rx.recv().await {
             tracing::trace!("Received mints: {mints:?}");

@@ -51,7 +51,7 @@ pub struct Database {
 #[derive(Serialize, Deserialize, Clone)]
 pub struct Takeover {
     /// Takeover alert bot
-    pub bot: String,
+    pub bot: Option<String>,
     /// If start takeover registry
     #[serde(default)]
     pub registry: bool,
@@ -71,7 +71,7 @@ pub struct Takeover {
 #[derive(Serialize, Deserialize, Clone)]
 pub struct Pumpman {
     /// pumpman bot token
-    pub bot: String,
+    pub bot: Option<String>,
     /// pumpman global config
     pub global: PumpmanGlobal,
 }
@@ -91,4 +91,14 @@ pub struct PumpmanGlobal {
     pub threshold: BigDecimal,
     /// How many bumps to be batched
     pub batch: i64,
+    /// Pumpman cache config
+    pub cache: PumpmanCache,
+    /// treasury account
+    pub treasury: String,
+}
+
+/// Cache config of pumpman
+#[derive(Serialize, Deserialize, Clone)]
+pub struct PumpmanCache {
+    pub bonding_curve: u64,
 }
