@@ -215,14 +215,17 @@ impl<'i> BumpBuilder<'i> {
         ))
     }
 
-    /// TODO: check if no charging
     pub fn ix_service_fee(mut self) -> Result<Self> {
+        if !self.job.charge_fee(&self.config) {
+            return Ok(self);
+        }
+
         let user = self.wallet.pubkey();
         let treasury = Pubkey::from_str(&self.config.treasury)?;
         self.ixs.push(system_instruction::transfer(
             &user,
             &treasury,
-            self.config.fee.lamports()?,
+            self.config.fee.lamports()? * (self.job.batch as u64),
         ));
 
         self.units += Self::TRANSFER_UNITS;
@@ -287,8 +290,13 @@ impl<'i> BumpBuilder<'i> {
         let sell =
             pump::Sell::new(amount, sol.saturating_sub(pfee)).ix(self.global, self.mint, user);
 
-        self.ixs.append(&mut vec![buy, sell]);
-        self.units += Self::BUMP_UNITS;
+        self.ixs.append(
+            &mut vec![vec![buy.clone(), sell.clone()]; self.job.batch as usize]
+                .into_iter()
+                .flatten()
+                .collect(),
+        );
+        self.units += Self::BUMP_UNITS * (self.job.batch as u32);
         Ok(self)
     }
 

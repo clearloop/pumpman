@@ -44,16 +44,18 @@ pub struct Pumpman {
     pub owner: i64,
     /// Target coin to be bumped
     pub mint: String,
-    /// How many bump transactions will be included at once
-    pub batch: i64,
     /// Fee for each transaction
     pub tx_fee: BigDecimal,
     /// Amount for each bump
     pub amount: BigDecimal,
+    /// How many bumps will be included at once
+    pub batch: i32,
     /// Duration for each bump in millis
-    pub speed: i64,
+    pub speed: i32,
     /// Count of history bumps
-    pub bump: i64,
+    pub bumps: i64,
+    /// Specific wallet for this job
+    pub wallet: Option<String>,
 }
 
 impl Pumpman {
@@ -65,12 +67,18 @@ impl Pumpman {
             created_at: OffsetDateTime::now_utc().date(),
             owner,
             mint,
-            batch: 1,
             tx_fee: global.tx_fee.clone(),
             amount: global.amount.clone(),
+            batch: global.batch,
             speed: global.speed,
-            bump: 0,
+            bumps: 0,
+            wallet: None,
         }
+    }
+
+    /// If charges fee
+    pub fn charge_fee(&self, global: &config::PumpmanGlobal) -> bool {
+        (self.bumps * &global.fee) < global.threshold
     }
 
     /// Calculate how much time can it go
@@ -148,8 +156,10 @@ impl Pumpman {
         let down =
             InlineKeyboardButton::callback("-", Callback::job(id, JobCommand::BatchDown).format()?);
 
-        Ok(if self.batch == global.batch {
+        Ok(if self.batch == 1 {
             vec![btn, up]
+        } else if self.batch >= global.batch {
+            vec![btn, down]
         } else {
             vec![btn, down, up]
         })
@@ -229,8 +239,8 @@ impl Speed {
     }
 }
 
-impl From<i64> for Speed {
-    fn from(s: i64) -> Self {
+impl From<i32> for Speed {
+    fn from(s: i32) -> Self {
         match s {
             5 => Self::Fast,
             13 => Self::Low,

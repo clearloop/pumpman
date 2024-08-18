@@ -37,14 +37,14 @@ pub struct PumpmanGlobal {
     pub id: Option<i64>,
     /// Owner of this bump bot
     pub owner: i64,
-    /// How many bump transactions will be included at once
-    pub batch: i64,
     /// Fee for each transaction
     pub tx_fee: BigDecimal,
     /// Amount for each bump
     pub amount: BigDecimal,
+    /// How many bump transactions will be included at once
+    pub batch: i32,
     /// Duration for each bump in millis
-    pub speed: i64,
+    pub speed: i32,
 }
 
 impl PumpmanGlobal {
@@ -53,9 +53,9 @@ impl PumpmanGlobal {
         Self {
             id: None,
             owner,
-            batch: 1,
             tx_fee: global.tx_fee.clone(),
             amount: global.amount.clone(),
+            batch: 1,
             speed: global.speed,
         }
     }
@@ -68,11 +68,12 @@ impl PumpmanGlobal {
             created_at: OffsetDateTime::now_utc().date(),
             owner: self.owner,
             mint: mint.into(),
-            batch: 1,
             tx_fee: self.tx_fee.clone(),
             amount: self.amount.clone(),
+            batch: self.batch,
             speed: self.speed,
-            bump: 0,
+            bumps: 0,
+            wallet: None,
         }
     }
 

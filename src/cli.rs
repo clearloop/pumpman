@@ -4,10 +4,7 @@ use crate::{
     api::{DexScreenerApi, PumpApi, SolRpcApi},
     context::Context,
     model::{Alert, AlertTitle},
-    sol::{
-        self,
-        pump::{self, accounts::BondingCurve, SOL_SCALE},
-    },
+    sol::pump::{accounts::BondingCurve, SOL_SCALE},
     Config,
 };
 use anchor_lang::AccountDeserialize;
@@ -192,22 +189,21 @@ impl Command {
                     )
                     .await?;
 
-                // let fee = context
-                //     .client
-                //     .rpc()
-                //     .get_fee_for_message(tx.message())
-                //     .await?;
-                // println!("Fee {fee} ({} SOL)", BigDecimal::from(fee) / SOL_SCALE);
+                let fee = context
+                    .client
+                    .rpc()
+                    .get_fee_for_message(tx.message())
+                    .await?;
+                println!("Fee {fee} ({} SOL)", BigDecimal::from(fee) / SOL_SCALE);
 
                 let bytes = bincode::serialize(&tx)?;
                 println!("Size: {}", bytes.len());
 
                 let resp = context.client.helius().simulate_transaction(&tx).await?;
-                // println!("{resp:#?}");
-                println!("{:#?}", resp.value.units_consumed);
+                println!("{resp:#?}");
 
-                let _logs: Vec<pump::events::TradeEvent> =
-                    sol::parse2(&resp.value.logs.expect("Logs not found"))?;
+                // let _logs: Vec<pump::events::TradeEvent> =
+                //     sol::parse2(&resp.value.logs.expect("Logs not found"))?;
                 // println!("{logs:#?}");
             }
         }

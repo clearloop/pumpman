@@ -4,9 +4,10 @@ CREATE TABLE IF NOT EXISTS pumpmen (
     created_at  Date          NOT NULL,
     owner       BigInt        NOT NULL,
     mint        TEXT          NOT NULL,
-    batch       BigInt        NOT NULL,
     tx_fee      Decimal       NOT NULL,
     amount      Decimal       NOT NULL,
-    speed       BigInt        NOT NULL,
-    bump        BigInt        NOT NULL
+    batch       Integer       NOT NULL,
+    speed       Integer       NOT NULL,
+    bumps       BigInt        NOT NULL,
+    wallet      TEXT
 )

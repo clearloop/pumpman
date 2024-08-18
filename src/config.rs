@@ -83,14 +83,14 @@ pub struct PumpmanGlobal {
     pub tx_fee: BigDecimal,
     /// Bump amount in sol
     pub amount: BigDecimal,
-    /// bumping duration in seconds
-    pub speed: i64,
     /// pumpman service fee per bump
     pub fee: BigDecimal,
     /// bump fee threshold per token
     pub threshold: BigDecimal,
-    /// How many bumps to be batched
-    pub batch: i64,
+    /// The max limit of bumps to be batched
+    pub batch: i32,
+    /// bumping duration in seconds
+    pub speed: i32,
     /// Pumpman cache config
     pub cache: PumpmanCache,
     /// treasury account
