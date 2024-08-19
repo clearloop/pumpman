@@ -88,7 +88,7 @@ pub struct PumpmanGlobal {
     /// Priority fee in sol
     pub priority_fee_step: BigDecimal,
     /// pumpman service fee basis points
-    pub service_fee: u32,
+    pub service_fee: BigDecimal,
     /// bump fee threshold per token
     pub threshold: BigDecimal,
     /// transaction slippage percent

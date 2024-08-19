@@ -2,7 +2,7 @@ use crate::{
     api::{PumpApi, SolRpcApi},
     config,
     context::{Cache, Client},
-    model::{Pumpman, PumpmanGlobal, User},
+    model::{Pumpman, PumpmanGlobal, PumpmanJob, User},
     schema::{pumpman_global, pumpmen, users},
     sol::{
         self,
@@ -226,15 +226,17 @@ impl<'i> BumpBuilder<'i> {
     }
 
     pub fn ix_service_fee(mut self) -> Result<Self> {
-        if !self.job.charge_fee(&self.config) {
+        let fee = self.job.service_fee(&self.config);
+        if fee.is_zero() {
             return Ok(self);
         }
 
         let user = self.wallet.pubkey();
         let treasury = Pubkey::from_str(&self.config.treasury)?;
         self.ixs.push(system_instruction::transfer(
-            &user, &treasury,
-            0, // self.config.service_fee.lamports()? * (self.job.batch as u64),
+            &user,
+            &treasury,
+            fee.lamports()?,
         ));
 
         self.units += Pumpman::TRANSFER_UNITS;

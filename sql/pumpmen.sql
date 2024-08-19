@@ -7,8 +7,8 @@ CREATE TABLE IF NOT EXISTS pumpmen (
     active          Boolean       NOT NULL,
     amount          Decimal       NOT NULL,
     priority_fee    Decimal       NOT NULL,
-    slippage        Integer       NOT NULL,
     batch           Integer       NOT NULL,
     speed           Integer       NOT NULL,
-    bumps           BigInt        NOT NULL
+    bumps           BigInt        NOT NULL,
+    charged         Decimal       NOT NULL
 )

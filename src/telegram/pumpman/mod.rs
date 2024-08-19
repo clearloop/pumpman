@@ -29,6 +29,7 @@ pub async fn start(bot: &Bot, context: PumpmanContext, redis: String) -> anyhow:
 
     let command = teloxide::filter_command::<Command, _>()
         .branch(case![Command::Start].endpoint(Command::start))
+        .branch(case![Command::Wallet].endpoint(Command::wallet))
         .branch(case![Command::Config].endpoint(Command::config))
         .branch(case![Command::Fees].endpoint(Command::fees))
         .branch(case![Command::List].endpoint(Command::list));

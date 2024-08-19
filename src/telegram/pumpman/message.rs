@@ -10,28 +10,33 @@ use bigdecimal::{BigDecimal, Zero};
 use solana_sdk::{native_token::LAMPORTS_PER_SOL, pubkey::Pubkey, signer::Signer};
 use teloxide::types::{InlineKeyboardButton, InlineKeyboardMarkup};
 
+use super::callback::JobCommand;
+
 /// message while entring group
 pub const ENTER_GROUP: &str = r#"
 Only support private chats atm ))
 "#;
 
 /// Send menu message
-pub async fn menu(context: &PumpmanContext, user: i64, wallet: &Pubkey) -> Result<String> {
+pub async fn wallet(pubkey: &Pubkey) -> Result<String> {
+    Ok(format!(r#"Your wallet address: <code>{pubkey}</code>"#))
+}
+
+/// Send menu message
+pub async fn menu(context: &PumpmanContext, user: i64) -> Result<String> {
     let fee_basis_points = context.fee_basis_points().await?;
     let global = context.pglobal(user).await?;
-    let fee = 60 / global.speed * global.fee(&context.global, fee_basis_points);
+    let fee = 10 * 60 / global.speed * global.fee(&context.global, fee_basis_points);
 
     Ok(format!(
         r#"
 The easist way to keep your token staying on the first page of PumpFun!
 
-Your Wallet Address: <code>{}</code>
 /fees of bumping a token for 10 mins with /config: <code>{} SOL</code>
 
 Please paste a pumpfun link in the chat, for example: <code>https://pump.fun/8CTjSbj6h3pAMx1UJcQXLwA4KXAwRF6nQ1JVMkBjpump</code>
 "#,
-        wallet,
-        10 * &fee.round(6),
+        &fee.round(6),
     ))
 }
 
@@ -46,7 +51,7 @@ pub async fn config(context: &PumpmanContext, global: &PumpmanGlobal) -> Result<
         r#"
 Your new created jobs will inherit this config on initialization.
 
-/fees for 10 mins with <code>{bumps}</code> bumps: <code>{est} SOL</code>
+/fees of <code>{bumps}</code> bumps in 10 mins: <code>{est} SOL</code>
 
 * <b>Batch Bumps</b>: How many bumps will be included per transaction.
 * <b>Transaction Fee</b>: Tips for the validators to make your bumps confirm faster.
@@ -79,7 +84,7 @@ no service fees applied on that token anymore!
         global.pumpfun_fee(fee_basis_points).round(6),
         global.amount.round(4),
         global.tx_fee().round(6),
-        global.service_fee(&context.global).round(4),
+        global.service_fee(&context.global).round(6),
         context.global.threshold.round(2),
     ))
 }
@@ -95,33 +100,43 @@ pub async fn job(context: &PumpmanContext, job: &Pumpman) -> Result<String> {
     let coin = context.client.coin(&job.mint, true, redis).await?;
     let wallet = context.wallet(job.owner).await?;
     let pubkey = wallet.pubkey();
-    let global = context.client.global().await?;
     let balance = context.client.rpc().get_balance(&pubkey).await?;
     let sol = BigDecimal::from(&balance) / LAMPORTS_PER_SOL;
+
+    let fee_basis_points = context.fee_basis_points().await?;
+    let fee = job.fee(&context.global, fee_basis_points);
 
     Ok(format!(
         r#"
 Job <a href="https://pump.fun/{}">{} (${})</a>
 
-Your Wallet Address: <code>{pubkey}</code> (<code>{} SOL</code>)
+Your Wallet Address: <code>{pubkey}</code> ( <code>{} SOL</code> )
 
-Reserved balance for bump amount: <code>{} SOL</code>
-Free balance for bump fees <code>{} SOL</code> which can bump ${} for around {}.
+* <b>Reserved balance</b> for bump amount: <code>{} SOL</code>
+* <b>Free balance</b> for /fees: <code>{} SOL</code> which can bump ${} for around <code>{}</code>.
 "#,
         coin.mint,
         coin.name,
         coin.symbol,
-        (&job.amount / LAMPORTS_PER_SOL).round(6),
         sol.round(6),
+        sol.round(6).min((&job.amount / LAMPORTS_PER_SOL).round(6)),
+        (sol - &job.amount).max(BigDecimal::zero()).round(6),
         coin.symbol,
-        (sol - &job.amount).min(BigDecimal::zero()),
-        job.duration(&context.global, &global, balance)
+        job.duration(&fee, balance)
     ))
 }
 
 /// List all jobs
 pub fn list(jobs: &[Pumpman]) -> String {
-    format!(r#"You currently have {} jobs running"#, jobs.len())
+    let total = jobs.len();
+    let active = jobs.iter().filter(|j| j.active).count();
+    format!(
+        r#"
+You currently have <code>{total}</code> jobs in total, <code>{active}</code> of them are active.
+
+Tap job names to enter their dashboards. You can safely <code>delete</code> inactive jobs. Allocated balance will automatically return to your /wallet upon deletion.
+"#
+    )
 }
 
 pub async fn list_markup(
@@ -132,11 +147,35 @@ pub async fn list_markup(
     let mut kbs = Vec::new();
     for job in jobs {
         let coin = context.client.coin(&job.mint, false, redis).await?;
-        kbs.push(vec![InlineKeyboardButton::callback(
+        let job_id = job.id();
+        let mut commands = vec![InlineKeyboardButton::callback(
             format!("{} (${})", coin.name, coin.symbol),
-            Callback::ShowJob(job.id()).format()?,
-        )]);
+            Callback::ShowJob(job_id).format()?,
+        )];
+
+        if job.active {
+            commands.push(InlineKeyboardButton::callback(
+                "Stop",
+                Callback::job(JobCommand::Stop, job.id).format()?,
+            ));
+        } else {
+            commands.push(InlineKeyboardButton::callback(
+                "Start",
+                Callback::job(JobCommand::Start, job.id).format()?,
+            ));
+
+            commands.push(InlineKeyboardButton::callback(
+                "Delete",
+                Callback::job(JobCommand::Stop, job.id).format()?,
+            ));
+        }
+        kbs.push(commands);
     }
 
+    kbs.push(vec![
+        InlineKeyboardButton::callback("All", Callback::DoNothing.format()?),
+        InlineKeyboardButton::callback("Start", Callback::DoNothing.format()?),
+        InlineKeyboardButton::callback("Stop", Callback::DoNothing.format()?),
+    ]);
     Ok(InlineKeyboardMarkup::new(kbs))
 }

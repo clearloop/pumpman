@@ -1,9 +1,4 @@
-use crate::{
-    config,
-    model::PumpmanJob,
-    sol::pump::{accounts::Global, PUMP_FEE_BASIS},
-    telegram::Result,
-};
+use crate::{config, model::PumpmanJob, telegram::Result};
 use bigdecimal::{BigDecimal, ToPrimitive};
 use diesel::{pg::Pg, prelude::*};
 use serde::{Deserialize, Serialize};
@@ -66,33 +61,8 @@ impl Pumpman {
     pub const TRANSFER_UNITS: u32 = 150;
     pub const BUDGET_UNITS: u32 = 300;
 
-    /// If charges fee
-    pub fn charge_fee(&self, global: &config::PumpmanGlobal) -> bool {
-        self.charged < global.threshold
-    }
-
-    /// * pumpfun fee
-    /// * slippage
-    /// * transaction fee
-    /// * service fee
-    pub fn avg_fee(&self, config: &config::PumpmanGlobal, global: &Global) -> BigDecimal {
-        let pfee = &self.amount * global.fee_basis_points / PUMP_FEE_BASIS;
-        let mut fee = &pfee * 2;
-        if self.charge_fee(config) {
-            fee += &config.service_fee;
-        }
-
-        fee * self.batch + &self.tx_fee()
-    }
-
     /// Calculate how much time can it go
-    pub fn duration(
-        &self,
-        config: &config::PumpmanGlobal,
-        global: &Global,
-        balance: u64,
-    ) -> String {
-        let fee = &self.avg_fee(config, global);
+    pub fn duration(&self, fee: &BigDecimal, balance: u64) -> String {
         let bumps = BigDecimal::from(balance) / LAMPORTS_PER_SOL / fee;
         let secs: BigDecimal = bumps * self.speed;
         let left = Duration::new(secs.to_i64().unwrap_or_default(), 0);

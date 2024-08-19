@@ -9,7 +9,7 @@ use diesel::ExpressionMethods;
 use diesel_async::RunQueryDsl;
 use serde::{Deserialize, Serialize};
 use teloxide::{
-    payloads::{EditMessageReplyMarkupSetters, EditMessageTextSetters},
+    payloads::EditMessageTextSetters,
     prelude::Message,
     requests::Requester,
     types::{CallbackQuery, InlineKeyboardButton, ParseMode},
@@ -163,7 +163,8 @@ impl JobCommand {
                 )]);
         }
 
-        bot.edit_message_reply_markup(msg.chat.id, msg.id)
+        bot.edit_message_text(msg.chat.id, msg.id, message::job(&context, &job).await?)
+            .parse_mode(ParseMode::Html)
             .reply_markup(markup)
             .await?;
         Ok(())

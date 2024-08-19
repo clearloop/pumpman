@@ -34,32 +34,41 @@ pub enum Command {
     /// Show the details of service fee
     #[command(description = "Show the details of service fees.")]
     Fees,
+    /// Wallet info
+    #[command(description = "Show the details of your wallet.")]
+    Wallet,
     /// List all running jobs
-    #[command(description = "List all running jobs")]
+    #[command(description = "List all jobs.")]
     List,
 }
 
 impl Command {
     /// command start
     pub async fn start(bot: Bot, context: PumpmanContext, msg: Message) -> Result<()> {
+        bot.send_message(msg.chat.id, message::menu(&context, msg.chat.id.0).await?)
+            .parse_mode(ParseMode::Html)
+            .await?;
+        Ok(())
+    }
+
+    /// Show the details of wallet
+    pub async fn wallet(bot: Bot, context: PumpmanContext, msg: Message) -> Result<()> {
         let wallet = context.wallet(msg.chat.id.0).await?;
         let pubkey = wallet.pubkey();
         let balance = (BigDecimal::from(context.client.rpc().get_balance(&pubkey).await?)
             / SOL_SCALE)
             .round(6);
 
-        bot.send_message(
-            msg.chat.id,
-            message::menu(&context, msg.chat.id.0, &pubkey).await?,
-        )
-        .parse_mode(ParseMode::Html)
-        .reply_markup(ReplyMarkup::inline_kb(vec![vec![
-            InlineKeyboardButton::callback(
-                format!("Withdraw (balance: {balance} SOL)"),
-                Callback::Withdraw.format()?,
-            ),
-        ]]))
-        .await?;
+        bot.send_message(msg.chat.id, message::wallet(&pubkey).await?)
+            .parse_mode(ParseMode::Html)
+            .reply_markup(ReplyMarkup::inline_kb(vec![vec![
+                InlineKeyboardButton::callback(
+                    format!("Withdraw ({balance} SOL)"),
+                    Callback::Withdraw.format()?,
+                ),
+            ]]))
+            .await?;
+
         Ok(())
     }
 
@@ -84,8 +93,8 @@ impl Command {
     /// List all jobs
     pub async fn list(bot: Bot, context: PumpmanContext, msg: Message) -> Result<()> {
         let jobs = context.jobs(msg.chat.id.0).await?;
-
         bot.send_message(msg.chat.id, message::list(&jobs))
+            .parse_mode(ParseMode::Html)
             .reply_markup(message::list_markup(&context, &jobs).await?)
             .await?;
         Ok(())
