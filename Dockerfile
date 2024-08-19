@@ -8,9 +8,8 @@ WORKDIR /src
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
     --mount=type=cache,target=/usr/local/cargo/git \
     --mount=type=cache,sharing=private,target=/src/target \
-    cargo build --bin replika --release \
-    && cp /src/target/release/takeover /usr/local/bin/takeover \
-    && cp /src/target/release/replika /usr/local/bin/replika
+    cargo build --bin takeover --release \
+    && cp /src/target/release/takeover /usr/local/bin/takeover
 
 ###
 # Production IMAGE.

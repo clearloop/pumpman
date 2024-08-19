@@ -105,13 +105,13 @@ impl Display for Alert {
             r#"
 *{title}* \- [{name} \(${symbol}\)](https://pump.fun/{mint})
 
-\- dev wallet sold out: {soldout}
-\- market cap: ${mc}k
-\- holders count: {count}
-\- top 20 holders HODL: {percent}%
-\- listed on dex: {dex}
+\- dev wallet sold out: `{soldout}`
+\- market cap: `${mc}k`
+\- holders count: `{count}`
+\- top 20 holders HODL: `{percent}%`
+\- listed on dex: `{dex}`
 
-`{address}`
+CA: `{address}`
 "#,
         )
     }
