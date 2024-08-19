@@ -95,7 +95,7 @@ impl Display for Alert {
         );
 
         let count = if count == 19 {
-            "> 20".escaped()
+            ">20".escaped()
         } else {
             format!("{count}")
         };
