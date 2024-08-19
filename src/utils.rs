@@ -4,7 +4,13 @@
 // 3 hrs
 pub const THOURS: u64 = 12800;
 
-// 5 minutes
+/// 1 hr
+pub const HOUR: u64 = 3600;
+
+/// 1 day
+pub const DAY: u64 = 86400;
+
+/// 5 minutes
 pub const FIVE_MINS: u64 = 300;
 
 pub mod base64 {

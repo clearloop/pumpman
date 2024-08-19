@@ -18,16 +18,6 @@ pub struct Config {
 }
 
 impl Config {
-    /// Get pumpsub config
-    pub fn pumpsub(&self) -> PumpSub {
-        let takeover_coins = if let Some(takeover) = &self.takeover {
-            takeover.coins
-        } else {
-            0
-        };
-        PumpSub { takeover_coins }
-    }
-
     /// Load config from path
     pub fn load(path: impl AsRef<Path>) -> Result<Self> {
         let config = fs::read_to_string(path.as_ref())
@@ -77,16 +67,11 @@ pub struct Takeover {
     pub subscription: String,
 }
 
-/// Pumpsub config
-pub struct PumpSub {
-    pub takeover_coins: usize,
-}
-
 /// Pumpman config
 #[derive(Serialize, Deserialize, Clone)]
 pub struct Pumpman {
     /// pumpman bot token
-    pub bot: String,
+    pub bot: Option<String>,
     /// pumpman global config
     pub global: PumpmanGlobal,
 }
@@ -94,16 +79,32 @@ pub struct Pumpman {
 /// Pumpman config context
 #[derive(Serialize, Deserialize, Clone)]
 pub struct PumpmanGlobal {
-    /// Transaction fee in sol
-    pub tx_fee: BigDecimal,
     /// Bump amount in sol
     pub amount: BigDecimal,
-    /// bumping duration in seconds
-    pub speed: i64,
-    /// pumpman service fee per bump
-    pub fee: BigDecimal,
+    /// Bump amount step in sol
+    pub amount_step: BigDecimal,
+    /// Priority fee in sol
+    pub priority_fee: BigDecimal,
+    /// Priority fee in sol
+    pub priority_fee_step: BigDecimal,
+    /// pumpman service fee basis points
+    pub service_fee: BigDecimal,
     /// bump fee threshold per token
     pub threshold: BigDecimal,
-    /// How many bumps to be batched
-    pub batch: i64,
+    /// transaction slippage percent
+    pub slippage: i32,
+    /// The max limit of bumps to be batched
+    pub batch: i32,
+    /// bumping duration in seconds
+    pub speed: i32,
+    /// Pumpman cache config
+    pub cache: PumpmanCache,
+    /// treasury account
+    pub treasury: String,
+}
+
+/// Cache config of pumpman
+#[derive(Serialize, Deserialize, Clone)]
+pub struct PumpmanCache {
+    pub bonding_curve: u64,
 }

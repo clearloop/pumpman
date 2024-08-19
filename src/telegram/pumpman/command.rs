@@ -34,36 +34,48 @@ pub enum Command {
     /// Show the details of service fee
     #[command(description = "Show the details of service fees.")]
     Fees,
+    /// Wallet info
+    #[command(description = "Show the details of your wallet.")]
+    Wallet,
     /// List all running jobs
-    #[command(description = "List all running jobs")]
+    #[command(description = "List all jobs.")]
     List,
 }
 
 impl Command {
     /// command start
     pub async fn start(bot: Bot, context: PumpmanContext, msg: Message) -> Result<()> {
+        bot.send_message(msg.chat.id, message::menu(&context, msg.chat.id.0).await?)
+            .parse_mode(ParseMode::Html)
+            .await?;
+        Ok(())
+    }
+
+    /// Show the details of wallet
+    pub async fn wallet(bot: Bot, context: PumpmanContext, msg: Message) -> Result<()> {
         let wallet = context.wallet(msg.chat.id.0).await?;
         let pubkey = wallet.pubkey();
         let balance = (BigDecimal::from(context.client.rpc().get_balance(&pubkey).await?)
             / SOL_SCALE)
             .round(6);
-        let global = context.global(msg.chat.id.0).await?;
-        bot.send_message(msg.chat.id, message::menu(&context.global, &global, pubkey))
+
+        bot.send_message(msg.chat.id, message::wallet(&pubkey).await?)
             .parse_mode(ParseMode::Html)
             .reply_markup(ReplyMarkup::inline_kb(vec![vec![
                 InlineKeyboardButton::callback(
-                    format!("Withdraw (balance: {balance} SOL)"),
+                    format!("Withdraw ({balance} SOL)"),
                     Callback::Withdraw.format()?,
                 ),
             ]]))
             .await?;
+
         Ok(())
     }
 
     /// Send config to users
     pub async fn config(bot: Bot, context: PumpmanContext, msg: Message) -> Result<()> {
-        let global = context.global(msg.chat.id.0).await?;
-        bot.send_message(msg.chat.id, message::config(&global))
+        let global = context.pglobal(msg.chat.id.0).await?;
+        bot.send_message(msg.chat.id, message::config(&context, &global).await?)
             .parse_mode(ParseMode::Html)
             .reply_markup(global.markup(&context.global)?)
             .await?;
@@ -72,8 +84,7 @@ impl Command {
 
     /// Send service fee details to users
     pub async fn fees(bot: Bot, context: PumpmanContext, msg: Message) -> Result<()> {
-        let global = context.global(msg.chat.id.0).await?;
-        bot.send_message(msg.chat.id, message::fees(&context.global, &global))
+        bot.send_message(msg.chat.id, message::fees(&context, msg.chat.id.0).await?)
             .parse_mode(ParseMode::Html)
             .await?;
         Ok(())
@@ -82,8 +93,8 @@ impl Command {
     /// List all jobs
     pub async fn list(bot: Bot, context: PumpmanContext, msg: Message) -> Result<()> {
         let jobs = context.jobs(msg.chat.id.0).await?;
-
         bot.send_message(msg.chat.id, message::list(&jobs))
+            .parse_mode(ParseMode::Html)
             .reply_markup(message::list_markup(&context, &jobs).await?)
             .await?;
         Ok(())

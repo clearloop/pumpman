@@ -14,7 +14,12 @@ use anchor_lang::AccountDeserialize;
 use anyhow::Result;
 use bigdecimal::{BigDecimal, ToPrimitive};
 use clap::{Parser, Subcommand};
+use solana_account_decoder::UiAccountEncoding;
+use solana_client::rpc_config::{
+    RpcSimulateTransactionAccountsConfig, RpcSimulateTransactionConfig,
+};
 use solana_sdk::{
+    native_token::LAMPORTS_PER_SOL,
     pubkey::Pubkey,
     signature::Signature,
     signer::{keypair::Keypair, Signer},
@@ -54,17 +59,30 @@ impl Opt {
 #[derive(Debug, Subcommand)]
 pub enum Command {
     /// Prints transaction from signature
-    Sig { signature: String },
+    Sig {
+        signature: String,
+    },
     /// Prints metadata of a token
-    Coin { mint: String },
+    Coin {
+        mint: String,
+    },
     /// Prints pairs of a token
-    Dex { mint: String },
+    Dex {
+        mint: String,
+    },
     /// Get alert info of a token
-    Info { mint: String },
+    Info {
+        mint: String,
+    },
     /// Get details of token account
-    TokenAccounts { acc: String, mint: String },
+    TokenAccounts {
+        acc: String,
+        mint: String,
+    },
     /// Get bonding curve of pumpfun coin
-    BondingCurve { bonding_curve: String },
+    BondingCurve {
+        bonding_curve: String,
+    },
     /// Verify signature
     Verify {
         account: String,
@@ -72,15 +90,20 @@ pub enum Command {
         sig: String,
     },
     /// Sign message
-    Sign { message: String },
+    Sign {
+        message: String,
+    },
     /// Simulate bump
     SimBump {
         mint: String,
         amount: BigDecimal,
         payer: PathBuf,
     },
+    PumpFee,
     /// Get balance
-    Balance { address: String },
+    Balance {
+        address: String,
+    },
     /// Init database
     Init,
 }
@@ -170,6 +193,10 @@ impl Command {
                     BigDecimal::from(balance) / SOL_SCALE
                 );
             }
+            Command::PumpFee => {
+                let fee = context.client.priority_fee().await?;
+                println!("pump.fun recent priority fee: {}", fee)
+            }
             Command::SimBump {
                 mint,
                 amount,
@@ -178,7 +205,7 @@ impl Command {
                 let payer =
                     Keypair::from_bytes(&serde_json::from_slice::<Vec<u8>>(&fs::read(payer)?)?)?;
                 let mint = Pubkey::from_str(mint)?;
-
+                let pubkey = payer.pubkey();
                 let exists = context.client.check_auser(mint, payer.pubkey()).await;
                 let tx = context
                     .client
@@ -192,12 +219,51 @@ impl Command {
                     )
                     .await?;
 
-                let resp = context.client.helius().simulate_transaction(&tx).await?;
+                let fee = context
+                    .client
+                    .helius()
+                    .get_fee_for_message(tx.message())
+                    .await?;
+                let bytes = bincode::serialize(&tx)?;
+                let balance = context.client.helius().get_balance(&pubkey).await?;
+
+                let resp = context
+                    .client
+                    .helius()
+                    .simulate_transaction_with_config(
+                        &tx,
+                        RpcSimulateTransactionConfig {
+                            accounts: Some(RpcSimulateTransactionAccountsConfig {
+                                encoding: Some(UiAccountEncoding::JsonParsed),
+                                addresses: vec![format!("{pubkey}")],
+                            }),
+                            ..Default::default()
+                        },
+                    )
+                    .await?;
                 println!("{resp:#?}");
 
                 let logs: Vec<pump::events::TradeEvent> =
                     sol::parse2(&resp.value.logs.expect("Logs not found"))?;
+
                 println!("{logs:#?}");
+                println!(
+                    "Cost: {} SOL",
+                    ((BigDecimal::from(balance)
+                        - resp
+                            .value
+                            .accounts
+                            .unwrap()
+                            .get(0)
+                            .unwrap()
+                            .clone()
+                            .unwrap()
+                            .lamports)
+                        / LAMPORTS_PER_SOL)
+                        .round(6)
+                );
+                println!("Fee {fee} ({} SOL)", BigDecimal::from(fee) / SOL_SCALE);
+                println!("Size: {}", bytes.len());
             }
         }
 

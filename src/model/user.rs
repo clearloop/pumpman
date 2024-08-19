@@ -1,18 +1,16 @@
 use crate::schema::users;
-use async_graphql::SimpleObject;
 use diesel::prelude::*;
 use serde::{Deserialize, Serialize};
 use solana_sdk::signature::Keypair;
+use time::{Date, OffsetDateTime};
 
 /// Replika users
 #[derive(
-    SimpleObject,
     Insertable,
     Queryable,
     Selectable,
     AsChangeset,
     Clone,
-    Default,
     PartialEq,
     Debug,
     Serialize,
@@ -27,6 +25,8 @@ pub struct User {
     /// Sequence id
     #[diesel(deserialize_as = i64)]
     pub id: Option<i64>,
+    /// creation time
+    pub created_at: Date,
     /// Telegram user id
     pub tgid: i64,
     /// User keypair
@@ -38,6 +38,7 @@ impl User {
     pub fn new(tgid: i64) -> Self {
         Self {
             id: None,
+            created_at: OffsetDateTime::now_utc().date(),
             tgid,
             wallet: bs58::encode(Keypair::new().to_bytes()).into_string(),
         }

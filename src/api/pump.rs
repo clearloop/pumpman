@@ -7,21 +7,27 @@ use crate::{
         pump::{
             self,
             accounts::{BondingCurve, Global},
-            Buy, Sell, GLOBAL,
+            Buy, Sell, GLOBAL, SOL_SCALE,
         },
+        utils::MICRO_LAMPORTS_PER_LAMPORT,
+        Lamports,
     },
     utils::FIVE_MINS,
 };
 use anchor_lang::AccountDeserialize;
 use anyhow::Result;
+use bigdecimal::{BigDecimal, ToPrimitive, Zero};
 use borsh::BorshSerialize;
 use redis::Connection;
+use solana_client::rpc_response::RpcPrioritizationFee;
 use solana_sdk::{
     account::Account,
+    compute_budget::ComputeBudgetInstruction,
     instruction::Instruction,
     message::Message,
     pubkey::Pubkey,
     signer::{keypair::Keypair, signers::Signers, Signer},
+    system_instruction,
     transaction::Transaction,
 };
 use spl_associated_token_account::instruction;
@@ -67,6 +73,62 @@ pub trait PumpApi: HttpClient + SolRpcApi {
             .unwrap_or((acc.to_string(), false)))
     }
 
+    /// Bump a pumpfun token
+    async fn bump(
+        &self,
+        mint: &Pubkey,
+        sol: u64,
+        payer: &Keypair,
+        exists: bool,
+    ) -> Result<Transaction> {
+        let bc = self.bonding_curve(mint).await?;
+        let global = self.global().await.unwrap_or(Global::cached());
+
+        // create instructions
+        let slippage = sol / 100 * 15;
+        let user = payer.pubkey();
+        let amount = global.buy(bc.real_sol_reserves, sol)?;
+        let buy = Buy::new(amount, sol + slippage).ix(&global, *mint, user);
+        let sell = Sell::new(amount, sol - slippage).ix(&global, *mint, user);
+
+        // create transaction
+        let mut ixs = vec![];
+        ixs.push(system_instruction::transfer(
+            &user,
+            &user,
+            BigDecimal::from_str("0.0001")?.lamports()?,
+        ));
+
+        if !exists {
+            let ix = instruction::create_associated_token_account(
+                &user,
+                &user,
+                mint,
+                &sol::TOKEN_PROGRAM,
+            );
+            ixs.push(ix);
+        }
+
+        ixs.append(&mut vec![
+            buy.clone(),
+            sell.clone(),
+            buy.clone(),
+            sell.clone(),
+        ]);
+        ixs.push(ComputeBudgetInstruction::set_compute_unit_limit(640_000));
+        ixs.push(ComputeBudgetInstruction::set_compute_unit_price(
+            (BigDecimal::from_str("0.000040")? * MICRO_LAMPORTS_PER_LAMPORT / 640_000u64)
+                .lamports()?,
+        ));
+        let blockhash = self.helius().get_latest_blockhash().await?;
+        Ok(Transaction::new_signed_with_payer(
+            &ixs,
+            Some(&user),
+            &[payer],
+            blockhash,
+        ))
+    }
+
     /// Get global account info
     async fn global(&self) -> Result<Global> {
         self.data(&GLOBAL).await
@@ -89,42 +151,18 @@ pub trait PumpApi: HttpClient + SolRpcApi {
         false
     }
 
-    /// Bump a pumpfun token
-    async fn bump(
-        &self,
-        mint: &Pubkey,
-        sol: u64,
-        payer: &Keypair,
-        exists: bool,
-    ) -> Result<Transaction> {
-        let bc = self.bonding_curve(mint).await?;
-        let global = self.global().await.unwrap_or(Global::cached());
+    async fn priority_fee(&self) -> Result<u64> {
+        let fees: Vec<RpcPrioritizationFee> = self
+            .rpc()
+            .get_recent_prioritization_fees(&[pump::ID])
+            .await?
+            .into_iter()
+            .filter(|f| !f.prioritization_fee.is_zero())
+            .collect();
 
-        // create instructions
-        let user = payer.pubkey();
-        let amount = global.buy(bc.real_sol_reserves, sol)?;
-        let buy = Buy::new(amount, sol * 115 / 100).ix(global, *mint, user);
-        let sell = Sell::new(amount, sol * 95 / 100).ix(global, *mint, user);
+        let avg_fee =
+            fees.iter().fold(0, |acc, e| acc + e.prioritization_fee) / (fees.len() as u64);
 
-        // create transaction
-        let mut ixs = vec![];
-        if !exists {
-            let ix = instruction::create_associated_token_account(
-                &user,
-                &user,
-                mint,
-                &sol::TOKEN_PROGRAM,
-            );
-            ixs.push(ix);
-        }
-
-        ixs.append(&mut vec![buy, sell]);
-        let blockhash = self.helius().get_latest_blockhash().await?;
-        Ok(Transaction::new_signed_with_payer(
-            &ixs,
-            Some(&user),
-            &[payer],
-            blockhash,
-        ))
+        Ok(avg_fee)
     }
 }

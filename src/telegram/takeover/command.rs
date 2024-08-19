@@ -2,7 +2,7 @@
 
 use crate::{
     context::Context,
-    telegram::takeover::{markup, message, state::State, Result, TakeoverDialogue},
+    telegram::takeover::{message, state::State, Result, TakeoverDialogue},
 };
 use teloxide::{
     payloads::SendMessageSetters, prelude::*, types::ReplyMarkup, utils::command::BotCommands,
@@ -46,7 +46,7 @@ pub async fn start(bot: Bot, dialogue: TakeoverDialogue, msg: Message) -> Result
     }
 
     bot.send_message(msg.chat.id, message::BRANDING)
-        .reply_markup(markup::menu()?)
+        .reply_markup(message::menu()?)
         .await?;
     Ok(())
 }
@@ -91,7 +91,7 @@ pub async fn info(
     }
 
     bot.send_message(msg.chat.id, message::CHOOSE_INFO)
-        .reply_markup(markup::list(&takeovers)?)
+        .reply_markup(message::list(&takeovers)?)
         .await?;
     dialogue.update(State::Info(takeovers)).await?;
     Ok(())
@@ -139,5 +139,10 @@ pub async fn set_telegram(
     _dialogue: TakeoverDialogue,
     _msg: Message,
 ) -> Result<()> {
+    Ok(())
+}
+
+pub async fn unsupport(bot: Bot, msg: Message) -> Result<()> {
+    bot.send_message(msg.chat.id, message::ENTER_GROUP).await?;
     Ok(())
 }

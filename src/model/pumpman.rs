@@ -1,17 +1,10 @@
-use crate::{
-    config,
-    model::PumpmanGlobal,
-    sol::pump::SOL_SCALE,
-    telegram::{
-        pumpman::callback::{Callback, JobCommand},
-        Result,
-    },
-};
+use crate::{config, model::PumpmanJob, telegram::Result};
 use bigdecimal::{BigDecimal, ToPrimitive};
 use diesel::{pg::Pg, prelude::*};
 use serde::{Deserialize, Serialize};
-use teloxide::types::{InlineKeyboardButton, InlineKeyboardMarkup};
-use time::{Date, Duration, OffsetDateTime};
+use solana_sdk::native_token::LAMPORTS_PER_SOL;
+use teloxide::types::InlineKeyboardMarkup;
+use time::{Date, Duration};
 
 /// Instance of a bump bot
 #[derive(
@@ -36,47 +29,41 @@ pub struct Pumpman {
     /// Sequence id
     #[diesel(deserialize_as = i64)]
     pub id: Option<i64>,
-    /// If the job is active
-    pub active: bool,
-    /// creation time
-    pub created_at: Date,
-    /// Owner of this bump bot
-    pub owner: i64,
     /// Target coin to be bumped
     pub mint: String,
-    /// How many bump transactions will be included at once
-    pub batch: i64,
-    /// Fee for each transaction
-    pub tx_fee: BigDecimal,
+    /// Owner of this bump bot
+    pub owner: i64,
+    /// Specific wallet for this job
+    pub wallet: Option<String>,
+    /// creation time
+    pub created_at: Date,
+    /// If the job is active
+    pub active: bool,
     /// Amount for each bump
     pub amount: BigDecimal,
+    /// Fee for each transaction
+    pub priority_fee: BigDecimal,
+    /// How many bumps will be included at once
+    pub batch: i32,
     /// Duration for each bump in millis
-    pub speed: i64,
+    pub speed: i32,
     /// Count of history bumps
-    pub bump: i64,
+    pub bumps: i64,
+    /// How much service fee have been charged from this job
+    pub charged: BigDecimal,
 }
 
 impl Pumpman {
-    /// Create a new pumpman config
-    pub fn new(global: &PumpmanGlobal, owner: i64, mint: String) -> Self {
-        Self {
-            id: None,
-            active: false,
-            created_at: OffsetDateTime::now_utc().date(),
-            owner,
-            mint,
-            batch: 1,
-            tx_fee: global.tx_fee.clone(),
-            amount: global.amount.clone(),
-            speed: global.speed,
-            bump: 0,
-        }
-    }
+    pub const BASIC_UNITS: u32 = 134;
+    pub const CACA_UNITS: u32 = 23203;
+    /// 82872 units in empty bonding curve
+    pub const BUMP_UNITS: u32 = 100_000;
+    pub const TRANSFER_UNITS: u32 = 150;
+    pub const BUDGET_UNITS: u32 = 300;
 
     /// Calculate how much time can it go
-    pub fn duration(&self, global: &config::PumpmanGlobal, balance: u64) -> String {
-        let fee = self.amount.clone() / 50 + &global.fee + &self.tx_fee;
-        let bumps = BigDecimal::from(balance) / SOL_SCALE / fee;
+    pub fn duration(&self, fee: &BigDecimal, balance: u64) -> String {
+        let bumps = BigDecimal::from(balance) / LAMPORTS_PER_SOL / fee;
         let secs: BigDecimal = bumps * self.speed;
         let left = Duration::new(secs.to_i64().unwrap_or_default(), 0);
         let hours = left.whole_hours();
@@ -102,7 +89,7 @@ impl Pumpman {
         Ok(InlineKeyboardMarkup::new(vec![
             self.start_button()?,
             self.batch_button(global)?,
-            self.tx_fee_button(global)?,
+            self.tx_fee_button()?,
             self.amount_button(global)?,
             self.speed_button()?,
         ]))
@@ -111,98 +98,6 @@ impl Pumpman {
     /// Get the id of this job
     pub fn id(&self) -> i64 {
         self.id.unwrap_or_default()
-    }
-
-    fn speed_button(&self) -> Result<Vec<InlineKeyboardButton>> {
-        Ok(vec![InlineKeyboardButton::callback(
-            Speed::from(self.speed).format(),
-            Callback::job(self.id(), JobCommand::Speed).format()?,
-        )])
-    }
-
-    fn start_button(&self) -> Result<Vec<InlineKeyboardButton>> {
-        let id = self.id();
-        Ok(if self.active {
-            vec![InlineKeyboardButton::callback(
-                "Stop",
-                Callback::job(id, JobCommand::Stop).format()?,
-            )]
-        } else {
-            vec![InlineKeyboardButton::callback(
-                "Start",
-                Callback::job(id, JobCommand::Start).format()?,
-            )]
-        })
-    }
-
-    fn batch_button(&self, global: &config::PumpmanGlobal) -> Result<Vec<InlineKeyboardButton>> {
-        let id = self.id();
-        let btn = InlineKeyboardButton::callback(
-            format!("Batch {}", self.batch),
-            Callback::DoNothing.format()?,
-        );
-
-        let up =
-            InlineKeyboardButton::callback("+", Callback::job(id, JobCommand::BatchUp).format()?);
-
-        let down =
-            InlineKeyboardButton::callback("-", Callback::job(id, JobCommand::BatchDown).format()?);
-
-        Ok(if self.batch == global.batch {
-            vec![btn, up]
-        } else {
-            vec![btn, down, up]
-        })
-    }
-
-    fn tx_fee_button(&self, global: &config::PumpmanGlobal) -> Result<Vec<InlineKeyboardButton>> {
-        let id = self.id();
-        let btn = InlineKeyboardButton::callback(
-            format!("Tx Fee {}", self.tx_fee.round(6)),
-            Callback::DoNothing.format()?,
-        );
-
-        let up =
-            InlineKeyboardButton::callback("+", Callback::job(id, JobCommand::TxFeeUp).format()?);
-
-        let down =
-            InlineKeyboardButton::callback("-", Callback::job(id, JobCommand::TxFeeDown).format()?);
-
-        Ok(if self.tx_fee.round(6) == global.tx_fee.round(6) {
-            vec![btn, up]
-        } else {
-            vec![btn, down, up]
-        })
-    }
-
-    fn amount_button(&self, global: &config::PumpmanGlobal) -> Result<Vec<InlineKeyboardButton>> {
-        let id = self.id();
-        let btn = InlineKeyboardButton::callback(
-            format!("Bump Amount {} SOL", self.amount.round(3)),
-            Callback::DoNothing.format()?,
-        );
-
-        let up =
-            InlineKeyboardButton::callback("+", Callback::job(id, JobCommand::AmountUp).format()?);
-
-        let down = InlineKeyboardButton::callback(
-            "-",
-            Callback::job(id, JobCommand::AmountDown).format()?,
-        );
-
-        Ok(if self.amount.round(3) == global.amount.round(3) {
-            vec![btn, up]
-        } else {
-            vec![btn, down, up]
-        })
-    }
-
-    pub fn toggle_speed(&mut self) {
-        self.speed = match self.speed {
-            13 => 7,
-            5 => 13,
-            _ => 5,
-        }
     }
 }
 
@@ -229,8 +124,8 @@ impl Speed {
     }
 }
 
-impl From<i64> for Speed {
-    fn from(s: i64) -> Self {
+impl From<i32> for Speed {
+    fn from(s: i32) -> Self {
         match s {
             5 => Self::Fast,
             13 => Self::Low,

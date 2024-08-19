@@ -4,6 +4,7 @@ mod dex;
 pub mod pump;
 mod pumpman;
 mod pumpman_global;
+mod pumpman_job;
 mod takeover;
 mod user;
 
@@ -13,6 +14,7 @@ pub use {
     dex::DexScreenerPair,
     pumpman::Pumpman,
     pumpman_global::PumpmanGlobal,
+    pumpman_job::PumpmanJob,
     takeover::{Takeover, TakeoverWithCoin},
     user::User,
 };

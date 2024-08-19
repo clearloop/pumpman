@@ -2,10 +2,10 @@
 #![allow(unused)]
 
 use solana_sdk::{pubkey, pubkey::Pubkey};
-pub use utils::{atk_addr, parse, parse2};
+pub use utils::{atk_addr, parse, parse2, Lamports};
 
 pub mod pump;
-mod utils;
+pub mod utils;
 
 pub static SYSTEM_PROGRAM: Pubkey = pubkey!("11111111111111111111111111111111");
 pub static TOKEN_PROGRAM: Pubkey = pubkey!("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA");
