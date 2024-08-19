@@ -103,7 +103,7 @@ impl Display for Alert {
         write!(
             f,
             r#"
-*{title}* \- [{name}](https://pump.fun/{mint}) \(${symbol}\)
+*{title}* \- [{name}](https://pump.fun/{mint} \(${symbol}\))
 
 \- dev wallet sold out: {soldout}
 \- market cap: ${mc}k
@@ -111,9 +111,7 @@ impl Display for Alert {
 \- top 20 holders HODL: {percent}%
 \- listed on dex: {dex}
 
-```copy
-{address}
-```
+`{address}`
 "#,
         )
     }
