@@ -13,7 +13,7 @@ use crate::{
         utils::MICRO_LAMPORTS_PER_LAMPORT,
         Lamports,
     },
-    utils::HOUR,
+    utils::{DAY, HOUR},
     Context,
 };
 use anyhow::Result;
@@ -89,7 +89,7 @@ impl PumpmanContext {
         Keypair::from_bytes(&bytes).map_err(Into::into)
     }
 
-    pub async fn global(&self, tgid: i64) -> Result<PumpmanGlobal> {
+    pub async fn pglobal(&self, tgid: i64) -> Result<PumpmanGlobal> {
         let postgres = &mut self.context.postgres().await?;
         if let Some(global) = pumpman_global::table
             .filter(pumpman_global::owner.eq(tgid))
@@ -109,16 +109,6 @@ impl PumpmanContext {
         }
     }
 
-    /// Get job by job id
-    pub async fn global_by_owner(&self, id: i64) -> Result<PumpmanGlobal> {
-        let postgres = &mut self.context.postgres().await?;
-        pumpman_global::table
-            .filter(pumpman_global::owner.eq(id))
-            .first::<PumpmanGlobal>(postgres)
-            .await
-            .map_err(Into::into)
-    }
-
     /// Get wallet address from telegram user id
     pub async fn job(&self, tgid: i64, mint: &str) -> Result<Pumpman> {
         let postgres = &mut self.context.postgres().await?;
@@ -131,7 +121,7 @@ impl PumpmanContext {
         {
             Ok(job)
         } else {
-            let job = self.global(tgid).await?.generate(mint);
+            let job = self.pglobal(tgid).await?.generate(mint);
             diesel::insert_into(pumpmen::table)
                 .values(&job)
                 .execute(postgres)
@@ -158,6 +148,19 @@ impl PumpmanContext {
             .load(postgres)
             .await
             .map_err(Into::into)
+    }
+
+    /// Get pumpfun global
+    pub async fn fee_basis_points(&self) -> Result<u64> {
+        let redis = &mut self.redis()?;
+        let key = Cache::PumpFeeBasisPoints;
+        if let Ok(points) = redis.get(&key) {
+            return Ok(points);
+        }
+
+        let points = self.client.global().await?.fee_basis_points;
+        redis.set_ex(&key, points, DAY)?;
+        Ok(points)
     }
 
     /// Get priority fee with cache
@@ -230,9 +233,8 @@ impl<'i> BumpBuilder<'i> {
         let user = self.wallet.pubkey();
         let treasury = Pubkey::from_str(&self.config.treasury)?;
         self.ixs.push(system_instruction::transfer(
-            &user,
-            &treasury,
-            self.config.service_fee.lamports()? * (self.job.batch as u64),
+            &user, &treasury,
+            0, // self.config.service_fee.lamports()? * (self.job.batch as u64),
         ));
 
         self.units += Pumpman::TRANSFER_UNITS;
@@ -295,7 +297,7 @@ impl<'i> BumpBuilder<'i> {
 
         // Calculate bump amount
         let amount = self.global.buy(bc.real_sol_reserves, sol)?;
-        let slippage = sol * (self.job.slippage as u64) / 100;
+        let slippage = sol * (self.config.slippage as u64) / 100;
         let buy =
             pump::Buy::new(amount, sol.saturating_add(slippage)).ix(self.global, self.mint, user);
         let sell =

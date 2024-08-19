@@ -1,11 +1,9 @@
 use crate::{
-    api::PUMPFUN_FEE_BASIS,
     config,
     model::{Pumpman, PumpmanJob},
-    sol::pump::{accounts::Global, SLIPPAGE_BASIS},
     telegram::Result,
 };
-use bigdecimal::BigDecimal;
+use bigdecimal::{BigDecimal, Zero};
 use diesel::{pg::Pg, prelude::*};
 use serde::{Deserialize, Serialize};
 use teloxide::types::InlineKeyboardMarkup;
@@ -40,8 +38,6 @@ pub struct PumpmanGlobal {
     pub amount: BigDecimal,
     /// Fee for each transaction
     pub priority_fee: BigDecimal,
-    /// global slippage settings
-    pub slippage: i32,
     /// How many bump transactions will be included at once
     pub batch: i32,
     /// Duration for each bump in millis
@@ -56,7 +52,6 @@ impl PumpmanGlobal {
             owner,
             priority_fee: global.priority_fee.clone(),
             amount: global.amount.clone(),
-            slippage: global.slippage,
             batch: 1,
             speed: global.speed,
         }
@@ -69,34 +64,21 @@ impl PumpmanGlobal {
             active: false,
             created_at: OffsetDateTime::now_utc().date(),
             owner: self.owner,
+            wallet: None,
             mint: mint.into(),
             priority_fee: self.priority_fee.clone(),
             amount: self.amount.clone(),
-            slippage: self.slippage,
             batch: self.batch,
             speed: self.speed,
             bumps: 0,
-            wallet: None,
+            charged: BigDecimal::zero(),
         }
-    }
-
-    /// * pumpfun fee
-    /// * slippage
-    /// * transaction fee
-    /// * service fee
-    pub fn avg_fee(&self, config: &config::PumpmanGlobal, global: &Global) -> BigDecimal {
-        let pfee = &self.amount * global.fee_basis_points / PUMPFUN_FEE_BASIS;
-        let sfee = &self.amount * self.slippage / SLIPPAGE_BASIS;
-        let fee = &pfee * 2 + &config.service_fee + &sfee;
-
-        fee * self.batch + self.tx_fee()
     }
 
     /// Show the markup from the current config
     pub fn markup(&self, global: &config::PumpmanGlobal) -> Result<InlineKeyboardMarkup> {
         Ok(InlineKeyboardMarkup::new(vec![
             self.batch_button(global)?,
-            self.slippage_button()?,
             self.tx_fee_button()?,
             self.amount_button(global)?,
             self.speed_button()?,

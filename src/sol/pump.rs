@@ -25,8 +25,8 @@ pub static GLOBAL: Pubkey = pubkey!("4wTV1YmiEkRvAtNtsSGPtUrqRYQMe5SKy2uB4Jjaxnj
 /// Total supply of pumpfun coins
 pub const TOTAL_SUPPLY: u64 = 1_000_000_000;
 
-/// Slippage basis
-pub const SLIPPAGE_BASIS: u64 = 100;
+/// Pumpfun fee basis
+pub const PUMP_FEE_BASIS: u64 = 10_000;
 
 /// SOL amount scale
 pub const SOL_SCALE: u64 = LAMPORTS_PER_SOL;

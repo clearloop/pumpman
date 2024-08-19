@@ -1,8 +1,7 @@
 use crate::{
-    api::PUMPFUN_FEE_BASIS,
     config,
     model::PumpmanJob,
-    sol::pump::{accounts::Global, SLIPPAGE_BASIS},
+    sol::pump::{accounts::Global, PUMP_FEE_BASIS},
     telegram::Result,
 };
 use bigdecimal::{BigDecimal, ToPrimitive};
@@ -49,14 +48,14 @@ pub struct Pumpman {
     pub amount: BigDecimal,
     /// Fee for each transaction
     pub priority_fee: BigDecimal,
-    /// Slippage of this job
-    pub slippage: i32,
     /// How many bumps will be included at once
     pub batch: i32,
     /// Duration for each bump in millis
     pub speed: i32,
     /// Count of history bumps
     pub bumps: i64,
+    /// How much service fee have been charged from this job
+    pub charged: BigDecimal,
 }
 
 impl Pumpman {
@@ -69,11 +68,7 @@ impl Pumpman {
 
     /// If charges fee
     pub fn charge_fee(&self, global: &config::PumpmanGlobal) -> bool {
-        (self.bumps * &global.service_fee) < global.threshold
-    }
-
-    pub fn slippage(&self) -> BigDecimal {
-        &self.amount * self.slippage / SLIPPAGE_BASIS
+        self.charged < global.threshold
     }
 
     /// * pumpfun fee
@@ -81,8 +76,8 @@ impl Pumpman {
     /// * transaction fee
     /// * service fee
     pub fn avg_fee(&self, config: &config::PumpmanGlobal, global: &Global) -> BigDecimal {
-        let pfee = &self.amount * global.fee_basis_points / PUMPFUN_FEE_BASIS;
-        let mut fee = &pfee * 2 + self.slippage();
+        let pfee = &self.amount * global.fee_basis_points / PUMP_FEE_BASIS;
+        let mut fee = &pfee * 2;
         if self.charge_fee(config) {
             fee += &config.service_fee;
         }
@@ -124,7 +119,6 @@ impl Pumpman {
         Ok(InlineKeyboardMarkup::new(vec![
             self.start_button()?,
             self.batch_button(global)?,
-            self.slippage_button()?,
             self.tx_fee_button()?,
             self.amount_button(global)?,
             self.speed_button()?,

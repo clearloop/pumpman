@@ -132,8 +132,6 @@ pub enum JobCommand {
     BatchDown,
     PriorityFeeUp,
     PriorityFeeDown,
-    SlippageUp,
-    SlippageDown,
     Speed,
 }
 
@@ -177,7 +175,7 @@ impl JobCommand {
         context: PumpmanContext,
         msg: Message,
     ) -> Result<()> {
-        let mut global = context.global_by_owner(msg.chat.id.0).await?;
+        let mut global = context.pglobal(msg.chat.id.0).await?;
         global.apply_command(&self, &context.global);
 
         diesel::update(pumpman_global::table)
@@ -186,10 +184,14 @@ impl JobCommand {
             .execute(&mut context.postgres().await?)
             .await?;
 
-        bot.edit_message_text(msg.chat.id, msg.id, message::CONFIG)
-            .parse_mode(ParseMode::Html)
-            .reply_markup(global.markup(&context.global)?)
-            .await?;
+        bot.edit_message_text(
+            msg.chat.id,
+            msg.id,
+            message::config(&context, &global).await?,
+        )
+        .parse_mode(ParseMode::Html)
+        .reply_markup(global.markup(&context.global)?)
+        .await?;
         Ok(())
     }
 }

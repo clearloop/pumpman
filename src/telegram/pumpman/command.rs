@@ -65,8 +65,8 @@ impl Command {
 
     /// Send config to users
     pub async fn config(bot: Bot, context: PumpmanContext, msg: Message) -> Result<()> {
-        let global = context.global(msg.chat.id.0).await?;
-        bot.send_message(msg.chat.id, message::CONFIG)
+        let global = context.pglobal(msg.chat.id.0).await?;
+        bot.send_message(msg.chat.id, message::config(&context, &global).await?)
             .parse_mode(ParseMode::Html)
             .reply_markup(global.markup(&context.global)?)
             .await?;
@@ -75,8 +75,7 @@ impl Command {
 
     /// Send service fee details to users
     pub async fn fees(bot: Bot, context: PumpmanContext, msg: Message) -> Result<()> {
-        let global = context.global(msg.chat.id.0).await?;
-        bot.send_message(msg.chat.id, message::fees(&context.global, &global))
+        bot.send_message(msg.chat.id, message::fees(&context, msg.chat.id.0).await?)
             .parse_mode(ParseMode::Html)
             .await?;
         Ok(())

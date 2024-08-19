@@ -37,7 +37,6 @@ use std::{
 };
 
 const PUMPFUN: &str = "https://frontend-api.pump.fun";
-pub const PUMPFUN_FEE_BASIS: u64 = 10000;
 
 /// pump.fun api set
 pub trait PumpApi: HttpClient + SolRpcApi {
@@ -86,11 +85,11 @@ pub trait PumpApi: HttpClient + SolRpcApi {
         let global = self.global().await.unwrap_or(Global::cached());
 
         // create instructions
-        let pf_fee = sol / 100 * 3;
+        let slippage = sol / 100 * 15;
         let user = payer.pubkey();
         let amount = global.buy(bc.real_sol_reserves, sol)?;
-        let buy = Buy::new(amount, sol + pf_fee).ix(&global, *mint, user);
-        let sell = Sell::new(amount, sol - pf_fee).ix(&global, *mint, user);
+        let buy = Buy::new(amount, sol + slippage).ix(&global, *mint, user);
+        let sell = Sell::new(amount, sol - slippage).ix(&global, *mint, user);
 
         // create transaction
         let mut ixs = vec![];
@@ -111,12 +110,6 @@ pub trait PumpApi: HttpClient + SolRpcApi {
         }
 
         ixs.append(&mut vec![
-            buy.clone(),
-            sell.clone(),
-            buy.clone(),
-            sell.clone(),
-            buy.clone(),
-            sell.clone(),
             buy.clone(),
             sell.clone(),
             buy.clone(),

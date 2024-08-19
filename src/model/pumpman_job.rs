@@ -1,7 +1,7 @@
 use crate::{
     config,
     model::{pumpman::Speed, Pumpman, PumpmanGlobal},
-    sol::utils::LAMPORTS_PER_SIGNATURE,
+    sol::{pump::PUMP_FEE_BASIS, utils::LAMPORTS_PER_SIGNATURE},
     telegram::{
         pumpman::callback::{Callback, JobCommand},
         Result,
@@ -10,6 +10,8 @@ use crate::{
 use bigdecimal::{BigDecimal, Zero};
 use solana_sdk::native_token::LAMPORTS_PER_SOL;
 use teloxide::types::InlineKeyboardButton;
+
+const SERVICE_FEE_BASIS: u32 = 10_000;
 
 /// Shared interfaces for pumpman jobs
 pub trait PumpmanJob {
@@ -20,10 +22,6 @@ pub trait PumpmanJob {
     fn priority_fee(&self) -> &BigDecimal;
 
     fn priority_fee_mut(&mut self) -> &mut BigDecimal;
-
-    fn slippage(&self) -> i32;
-
-    fn slippage_mut(&mut self) -> &mut i32;
 
     fn batch(&self) -> i32;
 
@@ -43,8 +41,30 @@ pub trait PumpmanJob {
         None
     }
 
+    /// Fee per bump
+    fn bump_fee(&self, global: &config::PumpmanGlobal, fee_basis_points: u64) -> BigDecimal {
+        self.pumpfun_fee(fee_basis_points) * 2 + self.service_fee(global) + self.tx_fee()
+    }
+
+    /// Pumpfun fee per trade
+    fn pumpfun_fee(&self, fee_basis_points: u64) -> BigDecimal {
+        self.amount() * fee_basis_points / PUMP_FEE_BASIS
+    }
+
+    /// Service fee of this job
+    fn service_fee(&self, global: &config::PumpmanGlobal) -> BigDecimal {
+        global.service_fee / SERVICE_FEE_BASIS * self.amount()
+    }
+
+    /// transaction tips
     fn tx_fee(&self) -> BigDecimal {
         self.priority_fee() + BigDecimal::from(LAMPORTS_PER_SIGNATURE) / LAMPORTS_PER_SOL
+    }
+
+    /// total transaction fee with config
+    fn fee(&self, config: &config::PumpmanGlobal, fee_basis_points: u64) -> BigDecimal {
+        (self.pumpfun_fee(fee_basis_points) * 2 + self.service_fee(config)) * self.batch()
+            + self.tx_fee()
     }
 
     fn speed_button(&self) -> Result<Vec<InlineKeyboardButton>> {
@@ -87,31 +107,6 @@ pub trait PumpmanJob {
             vec![btn, up]
         } else if batch >= global.batch {
             vec![btn, down]
-        } else {
-            vec![btn, down, up]
-        })
-    }
-
-    fn slippage_button(&self) -> Result<Vec<InlineKeyboardButton>> {
-        let id = self.job_id();
-        let slippage = self.slippage();
-        let btn = InlineKeyboardButton::callback(
-            format!("Slippage {}%", slippage),
-            Callback::DoNothing.format()?,
-        );
-
-        let up = InlineKeyboardButton::callback(
-            "+",
-            Callback::job(JobCommand::SlippageUp, id).format()?,
-        );
-
-        let down = InlineKeyboardButton::callback(
-            "-",
-            Callback::job(JobCommand::SlippageDown, id).format()?,
-        );
-
-        Ok(if slippage == 1 {
-            vec![btn, up]
         } else {
             vec![btn, down, up]
         })
@@ -182,8 +177,6 @@ pub trait PumpmanJob {
             JobCommand::BatchUp => *self.batch_mut() += 1,
             JobCommand::PriorityFeeDown => *self.priority_fee_mut() -= &global.priority_fee_step,
             JobCommand::PriorityFeeUp => *self.priority_fee_mut() += &global.priority_fee_step,
-            JobCommand::SlippageDown => *self.slippage_mut() -= 1,
-            JobCommand::SlippageUp => *self.slippage_mut() += 1,
             JobCommand::Speed => self.toggle_speed(),
         }
     }
@@ -204,14 +197,6 @@ impl PumpmanJob for Pumpman {
 
     fn priority_fee_mut(&mut self) -> &mut BigDecimal {
         &mut self.priority_fee
-    }
-
-    fn slippage(&self) -> i32 {
-        self.slippage
-    }
-
-    fn slippage_mut(&mut self) -> &mut i32 {
-        &mut self.slippage
     }
 
     fn batch(&self) -> i32 {
@@ -241,6 +226,14 @@ impl PumpmanJob for Pumpman {
     fn job_id(&self) -> Option<i64> {
         self.id
     }
+
+    fn service_fee(&self, global: &config::PumpmanGlobal) -> BigDecimal {
+        if self.charged < global.threshold {
+            global.service_fee / SERVICE_FEE_BASIS * self.amount()
+        } else {
+            BigDecimal::zero()
+        }
+    }
 }
 
 impl PumpmanJob for PumpmanGlobal {
@@ -258,14 +251,6 @@ impl PumpmanJob for PumpmanGlobal {
 
     fn priority_fee_mut(&mut self) -> &mut BigDecimal {
         &mut self.priority_fee
-    }
-
-    fn slippage(&self) -> i32 {
-        self.slippage
-    }
-
-    fn slippage_mut(&mut self) -> &mut i32 {
-        &mut self.slippage
     }
 
     fn batch(&self) -> i32 {

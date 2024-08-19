@@ -7,7 +7,7 @@ use serde::de::DeserializeOwned;
 use std::sync::Arc;
 pub use {
     dex::DexScreenerApi,
-    pump::{PumpApi, PUMPFUN_FEE_BASIS},
+    pump::PumpApi,
     sol::{Holders, SolRpcApi},
 };
 

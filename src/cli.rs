@@ -14,7 +14,12 @@ use anchor_lang::AccountDeserialize;
 use anyhow::Result;
 use bigdecimal::{BigDecimal, ToPrimitive};
 use clap::{Parser, Subcommand};
+use solana_account_decoder::UiAccountEncoding;
+use solana_client::rpc_config::{
+    RpcSimulateTransactionAccountsConfig, RpcSimulateTransactionConfig,
+};
 use solana_sdk::{
+    native_token::LAMPORTS_PER_SOL,
     pubkey::Pubkey,
     signature::Signature,
     signer::{keypair::Keypair, Signer},
@@ -200,7 +205,7 @@ impl Command {
                 let payer =
                     Keypair::from_bytes(&serde_json::from_slice::<Vec<u8>>(&fs::read(payer)?)?)?;
                 let mint = Pubkey::from_str(mint)?;
-
+                let pubkey = payer.pubkey();
                 let exists = context.client.check_auser(mint, payer.pubkey()).await;
                 let tx = context
                     .client
@@ -219,17 +224,46 @@ impl Command {
                     .helius()
                     .get_fee_for_message(tx.message())
                     .await?;
-                println!("Fee {fee} ({} SOL)", BigDecimal::from(fee) / SOL_SCALE);
-
                 let bytes = bincode::serialize(&tx)?;
-                println!("Size: {}", bytes.len());
+                let balance = context.client.helius().get_balance(&pubkey).await?;
 
-                let resp = context.client.helius().simulate_transaction(&tx).await?;
+                let resp = context
+                    .client
+                    .helius()
+                    .simulate_transaction_with_config(
+                        &tx,
+                        RpcSimulateTransactionConfig {
+                            accounts: Some(RpcSimulateTransactionAccountsConfig {
+                                encoding: Some(UiAccountEncoding::JsonParsed),
+                                addresses: vec![format!("{pubkey}")],
+                            }),
+                            ..Default::default()
+                        },
+                    )
+                    .await?;
                 println!("{resp:#?}");
 
                 let logs: Vec<pump::events::TradeEvent> =
                     sol::parse2(&resp.value.logs.expect("Logs not found"))?;
+
                 println!("{logs:#?}");
+                println!(
+                    "Cost: {} SOL",
+                    ((BigDecimal::from(balance)
+                        - resp
+                            .value
+                            .accounts
+                            .unwrap()
+                            .get(0)
+                            .unwrap()
+                            .clone()
+                            .unwrap()
+                            .lamports)
+                        / LAMPORTS_PER_SOL)
+                        .round(6)
+                );
+                println!("Fee {fee} ({} SOL)", BigDecimal::from(fee) / SOL_SCALE);
+                println!("Size: {}", bytes.len());
             }
         }
 

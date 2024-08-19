@@ -43,11 +43,10 @@ diesel::table! {
         active -> Bool,
         amount -> Decimal,
         priority_fee -> Decimal,
-        slippage -> Int4,
         batch -> Int4,
         speed -> Int4,
         bumps -> BigInt,
-
+        charged -> Decimal,
     }
 }
 
@@ -57,7 +56,6 @@ diesel::table! {
         owner -> Int8,
         amount -> Decimal,
         priority_fee -> Decimal,
-        slippage -> Int4,
         batch -> Int4,
         speed -> Int4,
     }
