@@ -103,7 +103,7 @@ impl Display for Alert {
         write!(
             f,
             r#"
-*{title}* \- [{name}](https://pump.fun/{mint} \(${symbol}\))
+*{title}* \- [{name} \(${symbol}\)](https://pump.fun/{mint})
 
 \- dev wallet sold out: {soldout}
 \- market cap: ${mc}k
