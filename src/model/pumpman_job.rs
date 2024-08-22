@@ -9,7 +9,7 @@ use crate::{
 };
 use bigdecimal::{BigDecimal, Zero};
 use solana_sdk::native_token::LAMPORTS_PER_SOL;
-use teloxide::types::InlineKeyboardButton;
+use teloxide::types::{InlineKeyboardButton, InlineKeyboardMarkup};
 
 const SERVICE_FEE_BASIS: u32 = 10_000;
 
@@ -180,6 +180,9 @@ pub trait PumpmanJob {
             JobCommand::Speed => self.toggle_speed(),
         }
     }
+
+    /// Show the markup with config
+    fn markup(&self, global: &config::PumpmanGlobal) -> Result<InlineKeyboardMarkup>;
 }
 
 impl PumpmanJob for Pumpman {
@@ -234,6 +237,16 @@ impl PumpmanJob for Pumpman {
             BigDecimal::zero()
         }
     }
+
+    fn markup(&self, global: &config::PumpmanGlobal) -> Result<InlineKeyboardMarkup> {
+        Ok(InlineKeyboardMarkup::new(vec![
+            self.start_button()?,
+            self.batch_button(global)?,
+            self.tx_fee_button()?,
+            self.amount_button(global)?,
+            self.speed_button()?,
+        ]))
+    }
 }
 
 impl PumpmanJob for PumpmanGlobal {
@@ -267,5 +280,14 @@ impl PumpmanJob for PumpmanGlobal {
 
     fn speed_mut(&mut self) -> &mut i32 {
         &mut self.speed
+    }
+
+    fn markup(&self, global: &config::PumpmanGlobal) -> Result<InlineKeyboardMarkup> {
+        Ok(InlineKeyboardMarkup::new(vec![
+            self.batch_button(global)?,
+            self.tx_fee_button()?,
+            self.amount_button(global)?,
+            self.speed_button()?,
+        ]))
     }
 }

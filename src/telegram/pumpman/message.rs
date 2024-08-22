@@ -163,11 +163,6 @@ pub async fn list_markup(
                 "Start",
                 Callback::job(JobCommand::Start, job.id).format()?,
             ));
-
-            commands.push(InlineKeyboardButton::callback(
-                "Delete",
-                Callback::job(JobCommand::Stop, job.id).format()?,
-            ));
         }
         kbs.push(commands);
     }

@@ -1,5 +1,6 @@
 use crate::{
     api::SolRpcApi,
+    model::PumpmanJob,
     sol::pump::SOL_SCALE,
     telegram::{
         pumpman::{message, PumpmanContext},

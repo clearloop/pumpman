@@ -1,9 +1,7 @@
-use crate::{config, model::PumpmanJob, telegram::Result};
 use bigdecimal::{BigDecimal, ToPrimitive};
 use diesel::{pg::Pg, prelude::*};
 use serde::{Deserialize, Serialize};
 use solana_sdk::native_token::LAMPORTS_PER_SOL;
-use teloxide::types::InlineKeyboardMarkup;
 use time::{Date, Duration};
 
 /// Instance of a bump bot
@@ -82,17 +80,6 @@ impl Pumpman {
         }
 
         duration
-    }
-
-    /// Show the markup from the current config
-    pub fn markup(&self, global: &config::PumpmanGlobal) -> Result<InlineKeyboardMarkup> {
-        Ok(InlineKeyboardMarkup::new(vec![
-            self.start_button()?,
-            self.batch_button(global)?,
-            self.tx_fee_button()?,
-            self.amount_button(global)?,
-            self.speed_button()?,
-        ]))
     }
 
     /// Get the id of this job
