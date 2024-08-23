@@ -34,7 +34,14 @@ pub async fn pumpman(mut config: Config, context: Context) -> Result<()> {
             r = bumping(context.clone(), Speed::Fast) => r,
             r = bumping(context.clone(), Speed::Normal) => r,
             r = bumping(context.clone(), Speed::Low) => r,
-            r = telegram::pumpman::start(&bot, context.clone(), config.database.redis.to_string()) => r,
+            r = async {
+                loop {
+                    if let Err(e) = telegram::pumpman::start(&bot, context.clone(), config.database.redis.to_string()).await {
+                        tracing::error!("{e}");
+                        tokio::time::sleep(Duration::from_secs(3)).await;
+                    }
+                }
+            }=> r,
         };
 
         if let Err(e) = r {
