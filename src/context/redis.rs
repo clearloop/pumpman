@@ -26,7 +26,7 @@ impl Redis {
 pub enum Cache<'t> {
     DevSoldOut(&'t str),
     BondingCurve(&'t Pubkey),
-    ACA(&'t Pubkey),
+    Aca(&'t Pubkey),
     PumpPriorityFee,
     PumpFeeBasisPoints,
 }
@@ -43,9 +43,9 @@ impl<'t> ToRedisArgs for Cache<'t> {
             Self::BondingCurve(mint) => {
                 format!("task::pumpman::bonding_curve::{mint}")
             }
-            Self::ACA(acc) => format!("task::pumpman::aca::{acc}"),
-            Self::PumpPriorityFee => format!("task::pumpman::pump::priority_fee"),
-            Self::PumpFeeBasisPoints => format!("task::pumpman::pump::global::fee_basis_points"),
+            Self::Aca(acc) => format!("task::pumpman::aca::{acc}"),
+            Self::PumpPriorityFee => "task::pumpman::pump::priority_fee".into(),
+            Self::PumpFeeBasisPoints => "task::pumpman::pump::global::fee_basis_points".into(),
         }
         .write_redis_args(out)
     }

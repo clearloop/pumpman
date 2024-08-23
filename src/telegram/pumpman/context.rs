@@ -58,7 +58,7 @@ impl PumpmanContext {
     }
 
     pub async fn bump(&self, global: &Global, job: &Pumpman) -> Result<()> {
-        let tx = self.bump_tx(&global, &job).await?;
+        let tx = self.bump_tx(global, job).await?;
         if let Err(e) = self.client.helius().send_transaction(&tx).await {
             if let Some(err) = e.get_transaction_error() {
                 match err {
@@ -82,7 +82,7 @@ impl PumpmanContext {
     }
 
     pub async fn simulate_bump(&self, global: &Global, job: &Pumpman) -> Result<()> {
-        let tx = self.bump_tx(&global, &job).await?;
+        let tx = self.bump_tx(global, job).await?;
         let resp = self.client.helius().simulate_transaction(&tx).await?;
         if let Some(err) = resp.value.err {
             match err {
@@ -291,7 +291,7 @@ impl<'i> BumpBuilder<'i> {
     }
 
     pub fn ix_service_fee(mut self) -> Result<Self> {
-        let fee = self.job.service_fee(&self.config);
+        let fee = self.job.service_fee(self.config);
         if fee.is_zero() {
             return Ok(self);
         }
@@ -334,7 +334,7 @@ impl<'i> BumpBuilder<'i> {
 
     pub async fn ix_caca(mut self, client: &Client, redis: &mut Connection) -> Result<Self> {
         let user = self.wallet.pubkey();
-        let key = Cache::ACA(&self.mint);
+        let key = Cache::Aca(&self.mint);
         if redis.exists(&key)? {
             return Ok(self);
         }

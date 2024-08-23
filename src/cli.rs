@@ -1,4 +1,5 @@
 //! CLI operations
+#![allow(clippy::get_first)]
 
 use crate::{
     api::{DexScreenerApi, PumpApi, SolRpcApi},
@@ -266,18 +267,12 @@ impl Command {
                     sol::parse2(&resp.value.logs.expect("Logs not found"))?;
 
                 println!("{logs:#?}");
+
+                let accounts: Vec<_> = resp.value.accounts.unwrap();
                 println!(
                     "Cost: {} SOL",
                     ((BigDecimal::from(balance)
-                        - resp
-                            .value
-                            .accounts
-                            .unwrap()
-                            .get(0)
-                            .unwrap()
-                            .clone()
-                            .unwrap()
-                            .lamports)
+                        - accounts.get(0).unwrap().clone().unwrap().lamports)
                         / LAMPORTS_PER_SOL)
                         .round(6)
                 );

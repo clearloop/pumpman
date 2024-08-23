@@ -64,7 +64,6 @@ async fn bumping(context: PumpmanContext, speed: Speed) -> Result<()> {
         let global = context.client.global().await?;
         for job in jobs {
             let context = context.clone();
-            let global = global.clone();
             task::spawn(async move {
                 let job_id = job.id();
                 if let Err(e) = context.simulate_bump(&global, &job).await {

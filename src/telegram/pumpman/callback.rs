@@ -148,7 +148,7 @@ impl JobCommand {
         let chat = msg.chat.id;
         let message = msg.id;
 
-        bot.edit_message_text(chat, message, message::job(&context, &job).await?)
+        bot.edit_message_text(chat, message, message::job(context, &job).await?)
             .parse_mode(ParseMode::Html)
             .reply_markup(markup)
             .await?;
@@ -164,7 +164,7 @@ impl JobCommand {
         job_id: i64,
     ) -> Result<()> {
         let mut job = context.job_by_id(job_id).await?;
-        job.apply_command(&self, &context.global);
+        job.apply_command(self, &context.global);
 
         diesel::update(pumpmen::table)
             .filter(pumpmen::id.eq(job.id.unwrap_or_default()))
@@ -172,7 +172,7 @@ impl JobCommand {
             .execute(&mut context.postgres().await?)
             .await?;
 
-        Self::show_job(&bot, dialogue, &context, &msg, job).await
+        Self::show_job(bot, dialogue, context, msg, job).await
     }
 
     pub async fn handle_global(
@@ -182,7 +182,7 @@ impl JobCommand {
         msg: Message,
     ) -> Result<()> {
         let mut global = context.pglobal(msg.chat.id.0).await?;
-        global.apply_command(&self, &context.global);
+        global.apply_command(self, &context.global);
 
         diesel::update(pumpman_global::table)
             .filter(pumpman_global::owner.eq(global.owner))
