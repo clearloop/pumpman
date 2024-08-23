@@ -182,12 +182,7 @@ pub trait PumpApi: HttpClient + SolRpcApi {
             ixs.push(ix);
         }
 
-        ixs.append(&mut vec![
-            buy.clone(),
-            sell.clone(),
-            buy.clone(),
-            sell.clone(),
-        ]);
+        // ixs.append(&mut vec![buy.clone(), sell.clone()]);
         ixs.push(ComputeBudgetInstruction::set_compute_unit_limit(640_000));
         ixs.push(ComputeBudgetInstruction::set_compute_unit_price(
             (BigDecimal::from_str("0.000040")? * MICRO_LAMPORTS_PER_LAMPORT / 640_000u64)

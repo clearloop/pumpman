@@ -65,7 +65,7 @@ impl Pumpman {
         let secs: BigDecimal = bumps * self.speed;
         let left = Duration::new(secs.to_i64().unwrap_or_default(), 0);
         let hours = left.whole_hours();
-        let mins = left.whole_minutes();
+        let mins = left.whole_minutes() - hours * 60;
         let mut duration = String::new();
         if hours > 0 {
             duration = format!("{hours} hours ");

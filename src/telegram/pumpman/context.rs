@@ -87,7 +87,7 @@ impl PumpmanContext {
         let resp = self.client.helius().simulate_transaction(&tx).await?;
         if let Some(err) = resp.value.err {
             match err {
-                TransactionError::BlockhashNotFound => {}
+                TransactionError::BlockhashNotFound => return Ok(()),
                 _ => anyhow::bail!("{err:?}"),
             }
         }
@@ -101,6 +101,7 @@ impl PumpmanContext {
             ))
             .execute(postgres)
             .await?;
+
         Ok(())
     }
 

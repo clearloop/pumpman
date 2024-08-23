@@ -79,6 +79,9 @@ Incentive for validators to put your transaction in a block as fast as possible.
 * Service Fee: <code>{} SOL</code>
 Once you have spent over <code>{} SOL</code> of service fee on a specific token, there will be
 no service fees applied on that token anymore!
+
+* Token Account Fee: <code>~ 0.002 SOL</code>
+There will be approximate <code>0.002 SOL</code> charged by solana in the first trade of each new tokens, it's for creating a token account that you can trade tokens on pumpfun, no other bots or platforms even pumpfun can not avoid it.
 "#,
         global.bump_fee(&context.global, fee_basis_points).round(6),
         global.pumpfun_fee(fee_basis_points).round(6),
@@ -119,7 +122,7 @@ Your Wallet Address: <code>{pubkey}</code> ( <code>{} SOL</code> )
         coin.name,
         coin.symbol,
         sol.round(6),
-        sol.round(6).min((&job.amount / LAMPORTS_PER_SOL).round(6)),
+        sol.round(6).min((&job.amount).round(6)),
         (sol - &job.amount).max(BigDecimal::zero()).round(6),
         coin.symbol,
         job.duration(&fee, balance)

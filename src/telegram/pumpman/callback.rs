@@ -130,13 +130,11 @@ impl JobCommand {
     ) -> Result<()> {
         let state = dialogue.get().await?;
         if state == Some(State::NoUpdateMarkup) {
-            dialogue.update(State::Start).await?;
             return Ok(());
         }
 
         let mut markup = job.markup(&context.global)?;
         if state == Some(State::BackToList) {
-            dialogue.update(State::Start).await?;
             markup
                 .inline_keyboard
                 .push(vec![InlineKeyboardButton::callback(

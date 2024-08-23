@@ -1,5 +1,9 @@
 use crate::{
-    sol::pump::TOTAL_SUPPLY,
+    sol::{
+        pump::TOTAL_SUPPLY,
+        utils::{LAMPORTS_PER_SIGNATURE, MICRO_LAMPORTS_PER_LAMPORT},
+        Lamports,
+    },
     utils::{sol, FIVE_MINS},
 };
 use anchor_lang::AccountDeserialize;
@@ -12,7 +16,15 @@ use solana_client::{
     nonblocking::rpc_client::RpcClient, rpc_config::RpcTransactionConfig,
     rpc_request::TokenAccountsFilter, rpc_response::RpcTokenAccountBalance,
 };
-use solana_sdk::{commitment_config::CommitmentConfig, pubkey::Pubkey, signature::Signature};
+use solana_sdk::{
+    commitment_config::CommitmentConfig,
+    compute_budget::ComputeBudgetInstruction,
+    pubkey::Pubkey,
+    signature::{Keypair, Signature},
+    signer::Signer,
+    system_instruction,
+    transaction::Transaction,
+};
 use solana_transaction_status::{EncodedConfirmedTransactionWithStatusMeta, UiTransactionEncoding};
 use std::{ops::Deref, str::FromStr, sync::Arc};
 
@@ -82,6 +94,33 @@ pub trait SolRpcApi {
         };
 
         Ok(accs)
+    }
+
+    async fn withdraw(&self, wallet: &Keypair, recipient: String) -> Result<Transaction> {
+        let helius = self.helius();
+        let pubkey = wallet.pubkey();
+        let balance = helius.get_balance(&pubkey).await?;
+        let fee = BigDecimal::from_str("0.000025")?;
+
+        let ixs = vec![
+            system_instruction::transfer(
+                &pubkey,
+                &recipient.parse()?,
+                balance.saturating_sub(fee.lamports()?.saturating_add(LAMPORTS_PER_SIGNATURE)),
+            ),
+            ComputeBudgetInstruction::set_compute_unit_limit(6_000),
+            ComputeBudgetInstruction::set_compute_unit_price(
+                (fee * MICRO_LAMPORTS_PER_LAMPORT / 6_000u64).lamports()?,
+            ),
+        ];
+
+        let blockhash = helius.get_latest_blockhash().await?;
+        Ok(Transaction::new_signed_with_payer(
+            &ixs,
+            Some(&pubkey),
+            &[wallet],
+            blockhash,
+        ))
     }
 
     #[allow(unused)]
