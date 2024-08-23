@@ -12,7 +12,7 @@ pub use {
     alert::{Alert, AlertTitle},
     coin::Coin,
     dex::DexScreenerPair,
-    pumpman::Pumpman,
+    pumpman::{Pumpman, Speed},
     pumpman_global::PumpmanGlobal,
     pumpman_job::PumpmanJob,
     takeover::{Takeover, TakeoverWithCoin},

@@ -4,6 +4,7 @@ use crate::{
     api::{DexScreenerApi, PumpApi, SolRpcApi},
     context::Context,
     model::{Alert, AlertTitle},
+    schema::users,
     sol::{
         self,
         pump::{self, accounts::BondingCurve, SOL_SCALE},
@@ -14,6 +15,8 @@ use anchor_lang::AccountDeserialize;
 use anyhow::Result;
 use bigdecimal::{BigDecimal, ToPrimitive};
 use clap::{Parser, Subcommand};
+use diesel::prelude::*;
+use diesel_async::RunQueryDsl;
 use solana_account_decoder::UiAccountEncoding;
 use solana_client::rpc_config::{
     RpcSimulateTransactionAccountsConfig, RpcSimulateTransactionConfig,
@@ -103,6 +106,10 @@ pub enum Command {
     /// Get balance
     Balance {
         address: String,
+    },
+    Import {
+        tgid: i64,
+        wallet: PathBuf,
     },
     /// Init database
     Init,
@@ -196,6 +203,18 @@ impl Command {
             Command::PumpFee => {
                 let fee = context.client.priority_fee().await?;
                 println!("pump.fun recent priority fee: {}", fee)
+            }
+            Command::Import { tgid, wallet } => {
+                let postgres = &mut context.postgres().await?;
+                let pair =
+                    Keypair::from_bytes(&serde_json::from_slice::<Vec<u8>>(&fs::read(wallet)?)?)?;
+                let wallet = bs58::encode(pair.to_bytes()).into_string();
+                diesel::update(users::table)
+                    .filter(users::tgid.eq(tgid))
+                    .set(users::wallet.eq(wallet))
+                    .execute(postgres)
+                    .await?;
+                println!("update the wallet of {tgid} as {}", pair.pubkey());
             }
             Command::SimBump {
                 mint,

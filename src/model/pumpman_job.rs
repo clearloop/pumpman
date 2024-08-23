@@ -169,7 +169,7 @@ impl PumpmanJob for Pumpman {
 
     fn service_fee(&self, global: &config::PumpmanGlobal) -> BigDecimal {
         if self.charged < global.threshold {
-            &global.service_fee / SERVICE_FEE_BASIS * self.amount()
+            &global.service_fee / SERVICE_FEE_BASIS * self.amount() * self.batch()
         } else {
             BigDecimal::zero()
         }

@@ -32,9 +32,9 @@ async fn main() -> Result<()> {
     let env: EnvFilter =
         EnvFilter::try_from_default_env().unwrap_or(EnvFilter::new(match app.verbose {
             0 => "info",
-            1 => "info,pumpman=debug",
-            2 => "info,pumpman=trace",
-            3 => "debug,pumpman=trace",
+            1 => "info,replika=debug",
+            2 => "info,replika=trace",
+            3 => "debug,replika=trace",
             _ => "trace",
         }));
 

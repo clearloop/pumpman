@@ -24,11 +24,20 @@ use diesel_async::RunQueryDsl;
 use redis::Commands;
 use redis::Connection;
 use solana_sdk::{
-    compute_budget::ComputeBudgetInstruction, instruction::Instruction, pubkey::Pubkey,
-    signature::Keypair, signer::Signer, system_instruction, transaction::Transaction,
+    compute_budget::ComputeBudgetInstruction,
+    instruction::Instruction,
+    pubkey::Pubkey,
+    signature::Keypair,
+    signer::Signer,
+    system_instruction,
+    transaction::{Transaction, TransactionError},
 };
 use spl_associated_token_account::instruction as aca_ix;
-use std::{ops::Deref, str::FromStr, sync::Arc};
+use std::{
+    ops::{Add, Deref},
+    str::FromStr,
+    sync::Arc,
+};
 
 /// Wrapped context
 #[derive(Clone)]
@@ -48,8 +57,54 @@ impl PumpmanContext {
         }
     }
 
+    pub async fn bump(&self, global: &Global, job: &Pumpman) -> Result<()> {
+        let tx = self.bump_tx(&global, &job).await?;
+        if let Err(e) = self.client.helius().send_transaction(&tx).await {
+            if let Some(err) = e.get_transaction_error() {
+                match err {
+                    TransactionError::BlockhashNotFound => {}
+                    _ => anyhow::bail!("{err:?}"),
+                }
+            }
+            return Err(e.into());
+        }
+
+        let postgres = &mut self.context.postgres().await?;
+        diesel::update(pumpmen::table)
+            .filter(pumpmen::id.eq(job.id()))
+            .set((
+                pumpmen::bumps.eq(pumpmen::bumps.add(job.batch as i64)),
+                pumpmen::charged.eq(pumpmen::charged.add(job.service_fee(&self.global))),
+            ))
+            .execute(postgres)
+            .await?;
+        Ok(())
+    }
+
+    pub async fn simulate_bump(&self, global: &Global, job: &Pumpman) -> Result<()> {
+        let tx = self.bump_tx(&global, &job).await?;
+        let resp = self.client.helius().simulate_transaction(&tx).await?;
+        if let Some(err) = resp.value.err {
+            match err {
+                TransactionError::BlockhashNotFound => {}
+                _ => anyhow::bail!("{err:?}"),
+            }
+        }
+
+        let postgres = &mut self.context.postgres().await?;
+        diesel::update(pumpmen::table)
+            .filter(pumpmen::id.eq(job.id()))
+            .set((
+                pumpmen::bumps.eq(pumpmen::bumps.add(job.batch as i64)),
+                pumpmen::charged.eq(pumpmen::charged.add(job.service_fee(&self.global))),
+            ))
+            .execute(postgres)
+            .await?;
+        Ok(())
+    }
+
     /// bump token
-    pub async fn bump(&self, global: &Global, job: &Pumpman) -> Result<Transaction> {
+    pub async fn bump_tx(&self, global: &Global, job: &Pumpman) -> Result<Transaction> {
         let redis = &mut self.redis()?;
         self.bump_builder(global, job)
             .await?
@@ -61,6 +116,17 @@ impl PumpmanContext {
             .ixs_compute_budget()?
             .build(&self.client)
             .await
+    }
+
+    /// Stop job
+    pub async fn stop(&self, job: i64) -> Result<()> {
+        let postgres = &mut self.context.postgres().await?;
+        diesel::update(pumpmen::table)
+            .filter(pumpmen::id.eq(job))
+            .set(pumpmen::active.eq(false))
+            .execute(postgres)
+            .await?;
+        Ok(())
     }
 
     /// Get wallet address from telegram user id
@@ -215,7 +281,6 @@ pub struct BumpBuilder<'i> {
 impl<'i> BumpBuilder<'i> {
     pub async fn build(self, client: &Client) -> Result<Transaction> {
         let payer = self.wallet.pubkey();
-
         let blockhash = client.helius().get_latest_blockhash().await?;
         Ok(Transaction::new_signed_with_payer(
             &self.ixs,

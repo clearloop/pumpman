@@ -97,7 +97,7 @@ pub enum Speed {
 
 impl Speed {
     /// Get the secs repl
-    pub const fn secs(&self) -> i64 {
+    pub const fn secs(&self) -> i32 {
         match self {
             Self::Low => 13,
             Self::Normal => 7,
