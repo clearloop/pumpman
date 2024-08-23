@@ -10,7 +10,7 @@ use bigdecimal::{BigDecimal, Zero};
 use solana_sdk::{native_token::LAMPORTS_PER_SOL, pubkey::Pubkey, signer::Signer};
 use teloxide::types::{InlineKeyboardButton, InlineKeyboardMarkup};
 
-use super::callback::JobCommand;
+use super::callback::ListCallback;
 
 /// message while entring group
 pub const ENTER_GROUP: &str = r#"
@@ -150,18 +150,18 @@ pub async fn list_markup(
         let job_id = job.id();
         let mut commands = vec![InlineKeyboardButton::callback(
             format!("{} (${})", coin.name, coin.symbol),
-            Callback::ShowJob(job_id).format()?,
+            Callback::list(ListCallback::ShowJob(job_id)).format()?,
         )];
 
         if job.active {
             commands.push(InlineKeyboardButton::callback(
                 "Stop",
-                Callback::job(JobCommand::Stop, job.id).format()?,
+                Callback::list(ListCallback::Stop(job_id)).format()?,
             ));
         } else {
             commands.push(InlineKeyboardButton::callback(
                 "Start",
-                Callback::job(JobCommand::Start, job.id).format()?,
+                Callback::list(ListCallback::Start(job_id)).format()?,
             ));
         }
         kbs.push(commands);
@@ -169,8 +169,8 @@ pub async fn list_markup(
 
     kbs.push(vec![
         InlineKeyboardButton::callback("All", Callback::DoNothing.format()?),
-        InlineKeyboardButton::callback("Start", Callback::DoNothing.format()?),
-        InlineKeyboardButton::callback("Stop", Callback::DoNothing.format()?),
+        InlineKeyboardButton::callback("Start", Callback::list(ListCallback::StartAll).format()?),
+        InlineKeyboardButton::callback("Stop", Callback::list(ListCallback::StopAll).format()?),
     ]);
     Ok(InlineKeyboardMarkup::new(kbs))
 }

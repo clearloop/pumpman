@@ -8,6 +8,7 @@ use crate::{
     },
 };
 use bigdecimal::{BigDecimal, Zero};
+use rand::{thread_rng, Rng};
 use solana_sdk::native_token::LAMPORTS_PER_SOL;
 use teloxide::types::{InlineKeyboardButton, InlineKeyboardMarkup};
 
@@ -75,89 +76,14 @@ pub trait PumpmanJob {
     }
 
     fn start_button(&self) -> Result<Vec<InlineKeyboardButton>> {
-        let id = self.job_id();
-        Ok(if self.active() {
-            vec![InlineKeyboardButton::callback(
-                "Stop",
-                Callback::job(JobCommand::Stop, id).format()?,
-            )]
-        } else {
-            vec![InlineKeyboardButton::callback(
-                "Start",
-                Callback::job(JobCommand::Start, id).format()?,
-            )]
-        })
+        Ok(Default::default())
     }
 
-    fn batch_button(&self, global: &config::PumpmanGlobal) -> Result<Vec<InlineKeyboardButton>> {
-        let id = self.job_id();
-        let batch = self.batch();
-        let btn = InlineKeyboardButton::callback(
-            format!("Batch Bumps {}", batch),
-            Callback::DoNothing.format()?,
-        );
+    fn batch_button(&self, global: &config::PumpmanGlobal) -> Result<Vec<InlineKeyboardButton>>;
 
-        let up =
-            InlineKeyboardButton::callback("+", Callback::job(JobCommand::BatchUp, id).format()?);
+    fn tx_fee_button(&self) -> Result<Vec<InlineKeyboardButton>>;
 
-        let down =
-            InlineKeyboardButton::callback("-", Callback::job(JobCommand::BatchDown, id).format()?);
-
-        Ok(if batch == 1 {
-            vec![btn, up]
-        } else if batch >= global.batch {
-            vec![btn, down]
-        } else {
-            vec![btn, down, up]
-        })
-    }
-
-    fn tx_fee_button(&self) -> Result<Vec<InlineKeyboardButton>> {
-        let id = self.job_id();
-        let btn = InlineKeyboardButton::callback(
-            format!("Tx Fee {}", self.tx_fee().round(6)),
-            Callback::DoNothing.format()?,
-        );
-
-        let up = InlineKeyboardButton::callback(
-            "+",
-            Callback::job(JobCommand::PriorityFeeUp, id).format()?,
-        );
-
-        let down = InlineKeyboardButton::callback(
-            "-",
-            Callback::job(JobCommand::PriorityFeeDown, id).format()?,
-        );
-
-        Ok(if self.priority_fee().le(&BigDecimal::zero()) {
-            vec![btn, up]
-        } else {
-            vec![btn, down, up]
-        })
-    }
-
-    fn amount_button(&self, global: &config::PumpmanGlobal) -> Result<Vec<InlineKeyboardButton>> {
-        let id = self.job_id();
-        let amount = self.amount().round(3);
-        let btn = InlineKeyboardButton::callback(
-            format!("Bump Amount {}", amount),
-            Callback::DoNothing.format()?,
-        );
-
-        let up =
-            InlineKeyboardButton::callback("+", Callback::job(JobCommand::AmountUp, id).format()?);
-
-        let down = InlineKeyboardButton::callback(
-            "-",
-            Callback::job(JobCommand::AmountDown, id).format()?,
-        );
-
-        Ok(if amount.round(3) == global.amount.round(3) {
-            vec![btn, up]
-        } else {
-            vec![btn, down, up]
-        })
-    }
+    fn amount_button(&self, global: &config::PumpmanGlobal) -> Result<Vec<InlineKeyboardButton>>;
 
     fn toggle_speed(&mut self) {
         *self.speed_mut() = match self.speed() {
@@ -168,15 +94,26 @@ pub trait PumpmanJob {
     }
 
     fn apply_command(&mut self, command: &JobCommand, global: &config::PumpmanGlobal) {
+        let mut rng = thread_rng();
         match command {
             JobCommand::Start => self.set_active(true),
             JobCommand::Stop => self.set_active(false),
             JobCommand::AmountDown => *self.amount_mut() -= &global.amount_step,
             JobCommand::AmountUp => *self.amount_mut() += &global.amount_step,
+            JobCommand::AmountRandom => {
+                *self.amount_mut() = &global.amount + &global.amount_step * rng.gen_range(0..6)
+            }
+            JobCommand::AmountReset => *self.amount_mut() = global.amount.clone(),
             JobCommand::BatchDown => *self.batch_mut() -= 1,
             JobCommand::BatchUp => *self.batch_mut() += 1,
+            JobCommand::BatchRandom => *self.batch_mut() = rng.gen_range(1..6),
+            JobCommand::BatchReset => *self.batch_mut() = 1,
             JobCommand::PriorityFeeDown => *self.priority_fee_mut() -= &global.priority_fee_step,
             JobCommand::PriorityFeeUp => *self.priority_fee_mut() += &global.priority_fee_step,
+            JobCommand::PriorityFeeRandom => {
+                *self.priority_fee_mut() = &global.priority_fee_step * rng.gen_range(0..10)
+            }
+            JobCommand::PriorityFeeReset => *self.priority_fee_mut() = global.priority_fee.clone(),
             JobCommand::Speed => self.toggle_speed(),
         }
     }
@@ -238,6 +175,65 @@ impl PumpmanJob for Pumpman {
         }
     }
 
+    fn start_button(&self) -> Result<Vec<InlineKeyboardButton>> {
+        let id = self.job_id();
+        Ok(if self.active() {
+            vec![InlineKeyboardButton::callback(
+                "Stop",
+                Callback::job(JobCommand::Stop, id).format()?,
+            )]
+        } else {
+            vec![InlineKeyboardButton::callback(
+                "Start",
+                Callback::job(JobCommand::Start, id).format()?,
+            )]
+        })
+    }
+
+    fn batch_button(&self, _global: &config::PumpmanGlobal) -> Result<Vec<InlineKeyboardButton>> {
+        let id = self.job_id();
+        let batch = self.batch();
+        let btn = InlineKeyboardButton::callback(
+            format!("Batch {}", batch),
+            Callback::job(JobCommand::BatchRandom, id).format()?,
+        );
+        let reset = InlineKeyboardButton::callback(
+            "Reset",
+            Callback::job(JobCommand::BatchReset, id).format()?,
+        );
+
+        Ok(vec![btn, reset])
+    }
+
+    fn tx_fee_button(&self) -> Result<Vec<InlineKeyboardButton>> {
+        let id = self.job_id();
+        let btn = InlineKeyboardButton::callback(
+            format!("Tx Fee {} SOL", self.tx_fee().round(6)),
+            Callback::job(JobCommand::PriorityFeeRandom, id).format()?,
+        );
+        let reset = InlineKeyboardButton::callback(
+            "Reset",
+            Callback::job(JobCommand::PriorityFeeReset, id).format()?,
+        );
+
+        Ok(vec![btn, reset])
+    }
+
+    fn amount_button(&self, _global: &config::PumpmanGlobal) -> Result<Vec<InlineKeyboardButton>> {
+        let id = self.job_id();
+        let amount = self.amount().round(3);
+        let btn = InlineKeyboardButton::callback(
+            format!("Amount {} SOL", amount),
+            Callback::job(JobCommand::AmountRandom, id).format()?,
+        );
+        let reset = InlineKeyboardButton::callback(
+            "Reset",
+            Callback::job(JobCommand::AmountReset, id).format()?,
+        );
+
+        Ok(vec![btn, reset])
+    }
+
     fn markup(&self, global: &config::PumpmanGlobal) -> Result<InlineKeyboardMarkup> {
         Ok(InlineKeyboardMarkup::new(vec![
             self.start_button()?,
@@ -280,6 +276,76 @@ impl PumpmanJob for PumpmanGlobal {
 
     fn speed_mut(&mut self) -> &mut i32 {
         &mut self.speed
+    }
+
+    fn batch_button(&self, global: &config::PumpmanGlobal) -> Result<Vec<InlineKeyboardButton>> {
+        let id = self.job_id();
+        let batch = self.batch();
+        let btn = InlineKeyboardButton::callback(
+            format!("Batch {}", batch),
+            Callback::DoNothing.format()?,
+        );
+
+        let up =
+            InlineKeyboardButton::callback("+", Callback::job(JobCommand::BatchUp, id).format()?);
+
+        let down =
+            InlineKeyboardButton::callback("-", Callback::job(JobCommand::BatchDown, id).format()?);
+
+        Ok(if batch == 1 {
+            vec![btn, up]
+        } else if batch >= global.batch {
+            vec![btn, down]
+        } else {
+            vec![btn, down, up]
+        })
+    }
+
+    fn tx_fee_button(&self) -> Result<Vec<InlineKeyboardButton>> {
+        let id = self.job_id();
+        let btn = InlineKeyboardButton::callback(
+            format!("Tx Fee {}", self.tx_fee().round(6)),
+            Callback::DoNothing.format()?,
+        );
+
+        let up = InlineKeyboardButton::callback(
+            "+",
+            Callback::job(JobCommand::PriorityFeeUp, id).format()?,
+        );
+
+        let down = InlineKeyboardButton::callback(
+            "-",
+            Callback::job(JobCommand::PriorityFeeDown, id).format()?,
+        );
+
+        Ok(if self.priority_fee().le(&BigDecimal::zero()) {
+            vec![btn, up]
+        } else {
+            vec![btn, down, up]
+        })
+    }
+
+    fn amount_button(&self, global: &config::PumpmanGlobal) -> Result<Vec<InlineKeyboardButton>> {
+        let id = self.job_id();
+        let amount = self.amount().round(3);
+        let btn = InlineKeyboardButton::callback(
+            format!("Amount {}", amount),
+            Callback::DoNothing.format()?,
+        );
+
+        let up =
+            InlineKeyboardButton::callback("+", Callback::job(JobCommand::AmountUp, id).format()?);
+
+        let down = InlineKeyboardButton::callback(
+            "-",
+            Callback::job(JobCommand::AmountDown, id).format()?,
+        );
+
+        Ok(if amount.round(3) == global.amount.round(3) {
+            vec![btn, up]
+        } else {
+            vec![btn, down, up]
+        })
     }
 
     fn markup(&self, global: &config::PumpmanGlobal) -> Result<InlineKeyboardMarkup> {

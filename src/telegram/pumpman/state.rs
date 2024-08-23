@@ -17,6 +17,7 @@ pub enum State {
     #[default]
     Start,
     BackToList,
+    NoUpdateMarkup,
 }
 
 /// Handle any message
