@@ -107,9 +107,9 @@ pub struct PumpmanGlobal {
 
 /// Pumpman config context
 #[derive(Serialize, Deserialize, Clone)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all(serialize = "camelCase"))]
 pub struct PumpmanProfile {
-    pub username: String,
+    pub username: Option<String>,
     pub bio: String,
     pub profile_image: String,
 }

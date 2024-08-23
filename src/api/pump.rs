@@ -92,7 +92,7 @@ pub trait PumpApi: HttpClient + SolRpcApi {
     async fn users(
         &self,
         profile: &PumpmanProfile,
-        pair: Keypair,
+        pair: &Keypair,
         con: &mut Connection,
     ) -> Result<Pubkey> {
         let token = self.auth(&pair, con).await?;

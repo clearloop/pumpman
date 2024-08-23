@@ -38,6 +38,7 @@ use std::{
     str::FromStr,
     sync::Arc,
 };
+use time::OffsetDateTime;
 
 /// Wrapped context
 #[derive(Clone)]
@@ -153,6 +154,23 @@ impl PumpmanContext {
 
         let bytes = bs58::decode(wallet).into_vec()?;
         Keypair::from_bytes(&bytes).map_err(Into::into)
+    }
+
+    /// Create a new user
+    pub async fn create_user(&self, tgid: i64) -> Result<User> {
+        let con = &mut self.redis()?;
+        let wallet = Keypair::new();
+
+        if let Err(e) = self.client.users(&self.global.profile, &wallet, con).await {
+            tracing::warn!("Failed to create profile for {}, {e}", wallet.pubkey());
+        }
+
+        Ok(User {
+            id: None,
+            created_at: OffsetDateTime::now_utc().date(),
+            tgid,
+            wallet: bs58::encode(wallet.to_bytes()).into_string(),
+        })
     }
 
     pub async fn pglobal(&self, tgid: i64) -> Result<PumpmanGlobal> {

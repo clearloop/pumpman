@@ -1,5 +1,3 @@
-use std::{fs, path::PathBuf};
-
 use anchor_lang::AccountDeserialize;
 use anyhow::Result;
 use replika::{
@@ -13,7 +11,7 @@ use replika::{
     },
 };
 use solana_client::rpc_client::RpcClient;
-use solana_sdk::{pubkey::Pubkey, signature::Keypair};
+use solana_sdk::{pubkey::Pubkey, signature::Keypair, signer::Signer};
 
 fn cluster() -> Cluster {
     Cluster {
@@ -74,21 +72,24 @@ fn bonding_curve_calc() -> Result<()> {
 #[tokio::test]
 async fn profile() -> Result<()> {
     let client = Client::new(&cluster())?;
-    let pair = Keypair::from_bytes(&serde_json::from_slice::<Vec<u8>>(&fs::read(
-        PathBuf::from(
-            "/Users/clearloop/.config/solana/pm54gax6szHDoZ6x4PDV3pbCxvYioFgfR8xJxAemFgf.json",
-        ),
-    )?)?)?;
     let redis = Redis::new(&"redis://localhost".parse()?)?;
+    // let pair = Keypair::from_bytes(&serde_json::from_slice::<Vec<u8>>(&fs::read(
+    //     PathBuf::from(
+    //         "/Users/clearloop/.config/solana/pm54gax6szHDoZ6x4PDV3pbCxvYioFgfR8xJxAemFgf.json",
+    //     ),
+    // )?)?)?;
 
+    let pair = Keypair::new();
     let profile = PumpmanProfile {
-        username: "pumpmanio".into(),
+        username: None,
         bio: "test".into(),
         profile_image:
             "https://pump.mypinata.cloud/ipfs/Qmf8myT22Ru6nHzRaRzkBBpYUFL1zTgk7nhiRLL4SN6rZX".into(),
     };
 
-    let pk = client.users(&profile, pair, &mut redis.con()?).await?;
+    // let j = serde_json::to_string_pretty(&profile);
+    // println!("{j:?}");
+    let pk = client.users(&profile, &pair, &mut redis.con()?).await?;
     println!("{pk}");
     Ok(())
 }
