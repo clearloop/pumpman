@@ -1,6 +1,9 @@
-use crate::telegram::{
-    pumpman::{message, message::INVALID_PUMPFUN_LINK, BotDialogue, PumpmanContext},
-    Result,
+use crate::{
+    model::PumpmanJob,
+    telegram::{
+        pumpman::{message, message::INVALID_PUMPFUN_LINK, BotDialogue, PumpmanContext},
+        Result,
+    },
 };
 use serde::{Deserialize, Serialize};
 use teloxide::{
@@ -14,6 +17,7 @@ pub enum State {
     #[default]
     Start,
     BackToList,
+    NoUpdateMarkup,
 }
 
 /// Handle any message

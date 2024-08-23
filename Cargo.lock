@@ -3919,6 +3919,7 @@ dependencies = [
  "futures",
  "futures-util",
  "mpl-token-metadata",
+ "rand 0.8.5",
  "redis 0.25.4",
  "reqwest",
  "serde",

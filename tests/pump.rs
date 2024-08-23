@@ -24,7 +24,7 @@ fn trade_accounts() -> Result<()> {
     let data = &client.get_account_data(&GLOBAL)?;
     let global = Global::try_deserialize(&mut data.as_ref())?;
     let accs = pump::Buy::new(0, 0)
-        .ix(global, mint, Default::default())
+        .ix(&global, mint, Default::default())
         .accounts;
 
     // check bonding curve account
@@ -50,9 +50,6 @@ fn bonding_curve_calc() -> Result<()> {
     println!("{:#?}", global);
 
     let bc = global.init();
-    assert_eq!(
-        global.buy(bc.real_sol_reserves, 1 * SOL_SCALE)?,
-        34612903225806
-    );
+    assert_eq!(global.buy(bc.real_sol_reserves, SOL_SCALE)?, 34612903225806);
     Ok(())
 }

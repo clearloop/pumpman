@@ -1,12 +1,7 @@
-use crate::{
-    config,
-    model::{Pumpman, PumpmanJob},
-    telegram::Result,
-};
+use crate::{config, model::Pumpman};
 use bigdecimal::{BigDecimal, Zero};
 use diesel::{pg::Pg, prelude::*};
 use serde::{Deserialize, Serialize};
-use teloxide::types::InlineKeyboardMarkup;
 use time::OffsetDateTime;
 
 /// Instance of a bump bot
@@ -73,15 +68,5 @@ impl PumpmanGlobal {
             bumps: 0,
             charged: BigDecimal::zero(),
         }
-    }
-
-    /// Show the markup from the current config
-    pub fn markup(&self, global: &config::PumpmanGlobal) -> Result<InlineKeyboardMarkup> {
-        Ok(InlineKeyboardMarkup::new(vec![
-            self.batch_button(global)?,
-            self.tx_fee_button()?,
-            self.amount_button(global)?,
-            self.speed_button()?,
-        ]))
     }
 }
