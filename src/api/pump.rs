@@ -1,6 +1,7 @@
 #![allow(unused)]
 use crate::{
     api::{HttpClient, SolRpcApi},
+    config::PumpmanProfile,
     context::Cache,
     model::pump::Coin,
     sol::{
@@ -46,7 +47,7 @@ const AUTH_TOKEN: &str = "auth_token";
 /// pump.fun api set
 pub trait PumpApi: HttpClient + SolRpcApi {
     /// Sign in to pump fun
-    async fn auth(&self, pair: Keypair, con: &mut Connection) -> Result<String> {
+    async fn auth(&self, pair: &Keypair, con: &mut Connection) -> Result<String> {
         let pubkey = pair.pubkey();
         let key = Cache::PumpFunAuthToken(&pubkey);
         if let Ok(token) = con.get(&key) {
@@ -86,6 +87,30 @@ pub trait PumpApi: HttpClient + SolRpcApi {
             pair.pubkey(),
             res.status()
         );
+    }
+
+    async fn users(
+        &self,
+        profile: &PumpmanProfile,
+        pair: Keypair,
+        con: &mut Connection,
+    ) -> Result<Pubkey> {
+        let token = self.auth(&pair, con).await?;
+        let res = self
+            .client()
+            .post(format!("{PUMPFUN}/users"))
+            .header("Origin", "https://pump.fun")
+            .header("Cookie", format!("auth_token={token}"))
+            .json(profile)
+            .send()
+            .await?;
+
+        let pubkey = pair.pubkey();
+        if res.status() != StatusCode::CREATED {
+            anyhow::bail!("Failed to create profile for {pubkey}");
+        }
+
+        Ok(pubkey)
     }
 
     /// get coin of pump fun

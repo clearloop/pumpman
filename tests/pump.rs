@@ -1,8 +1,10 @@
+use std::{fs, path::PathBuf};
+
 use anchor_lang::AccountDeserialize;
 use anyhow::Result;
 use replika::{
     api::PumpApi,
-    config::Cluster,
+    config::{Cluster, PumpmanProfile},
     context::{Client, Redis},
     sol::pump::{
         self,
@@ -70,12 +72,23 @@ fn bonding_curve_calc() -> Result<()> {
 }
 
 #[tokio::test]
-async fn login() -> Result<()> {
+async fn profile() -> Result<()> {
     let client = Client::new(&cluster())?;
-    let pair = Keypair::new();
+    let pair = Keypair::from_bytes(&serde_json::from_slice::<Vec<u8>>(&fs::read(
+        PathBuf::from(
+            "/Users/clearloop/.config/solana/pm54gax6szHDoZ6x4PDV3pbCxvYioFgfR8xJxAemFgf.json",
+        ),
+    )?)?)?;
     let redis = Redis::new(&"redis://localhost".parse()?)?;
 
-    let auth_token = client.auth(pair, &mut redis.con()?).await?;
-    println!("{auth_token}");
+    let profile = PumpmanProfile {
+        username: "pumpmanio".into(),
+        bio: "test".into(),
+        profile_image:
+            "https://pump.mypinata.cloud/ipfs/Qmf8myT22Ru6nHzRaRzkBBpYUFL1zTgk7nhiRLL4SN6rZX".into(),
+    };
+
+    let pk = client.users(&profile, pair, &mut redis.con()?).await?;
+    println!("{pk}");
     Ok(())
 }
