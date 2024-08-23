@@ -5,8 +5,8 @@ pub use {cli::Opt, config::Config, context::Context};
 
 pub mod api;
 mod cli;
-mod config;
-mod context;
+pub mod config;
+pub mod context;
 mod model;
 mod schema;
 pub mod service;

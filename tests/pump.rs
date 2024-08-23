@@ -1,12 +1,27 @@
 use anchor_lang::AccountDeserialize;
 use anyhow::Result;
-use replika::sol::pump::{
-    self,
-    accounts::{BondingCurve, Global},
-    GLOBAL, SOL_SCALE,
+use replika::{
+    api::PumpApi,
+    config::Cluster,
+    context::{Client, Redis},
+    sol::pump::{
+        self,
+        accounts::{BondingCurve, Global},
+        GLOBAL, SOL_SCALE,
+    },
 };
 use solana_client::rpc_client::RpcClient;
-use solana_sdk::pubkey::Pubkey;
+use solana_sdk::{pubkey::Pubkey, signature::Keypair};
+
+fn cluster() -> Cluster {
+    Cluster {
+        helius: "https://mainnet.helius-rpc.com/?api-key=a4174161-7e9c-40ab-83ce-d7f288335380"
+            .parse()
+            .unwrap(),
+        http: "https://api.mainnet-beta.solana.com".parse().unwrap(),
+        ws: "wss://api.mainnet-beta.solana.com".parse().unwrap(),
+    }
+}
 
 #[test]
 fn test_keys() {
@@ -51,5 +66,16 @@ fn bonding_curve_calc() -> Result<()> {
 
     let bc = global.init();
     assert_eq!(global.buy(bc.real_sol_reserves, SOL_SCALE)?, 34612903225806);
+    Ok(())
+}
+
+#[tokio::test]
+async fn login() -> Result<()> {
+    let client = Client::new(&cluster())?;
+    let pair = Keypair::new();
+    let redis = Redis::new(&"redis://localhost".parse()?)?;
+
+    let auth_token = client.auth(pair, &mut redis.con()?).await?;
+    println!("{auth_token}");
     Ok(())
 }
