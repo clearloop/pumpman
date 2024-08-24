@@ -6,6 +6,7 @@ use crate::{
     context::Context,
     model::{Alert, AlertTitle},
     schema::users,
+    service,
     sol::{
         self,
         pump::{self, accounts::BondingCurve, SOL_SCALE},
@@ -55,38 +56,27 @@ impl Opt {
 
         // pre-process
         context.init().await?;
-        self.command.run(context, self.update).await
+        self.command.run(context, config, self.update).await
     }
 }
 
 /// Sub commands
 #[derive(Debug, Subcommand)]
 pub enum Command {
+    /// Start all services
+    Start,
     /// Prints transaction from signature
-    Sig {
-        signature: String,
-    },
+    Sig { signature: String },
     /// Prints metadata of a token
-    Coin {
-        mint: String,
-    },
+    Coin { mint: String },
     /// Prints pairs of a token
-    Dex {
-        mint: String,
-    },
+    Dex { mint: String },
     /// Get alert info of a token
-    Info {
-        mint: String,
-    },
+    Info { mint: String },
     /// Get details of token account
-    TokenAccounts {
-        acc: String,
-        mint: String,
-    },
+    TokenAccounts { acc: String, mint: String },
     /// Get bonding curve of pumpfun coin
-    BondingCurve {
-        bonding_curve: String,
-    },
+    BondingCurve { bonding_curve: String },
     /// Verify signature
     Verify {
         account: String,
@@ -94,9 +84,7 @@ pub enum Command {
         sig: String,
     },
     /// Sign message
-    Sign {
-        message: String,
-    },
+    Sign { message: String },
     /// Simulate bump
     SimBump {
         mint: String,
@@ -104,29 +92,26 @@ pub enum Command {
         payer: PathBuf,
     },
     /// Simulate withdraw
-    SimWithdraw {
-        to: Pubkey,
-        payer: PathBuf,
-    },
+    SimWithdraw { to: Pubkey, payer: PathBuf },
+    /// Get pumpfun fee
     PumpFee,
     /// Get balance
-    Balance {
-        address: String,
-    },
-    Import {
-        tgid: i64,
-        wallet: PathBuf,
-    },
+    Balance { address: String },
+    /// Import wallet to database
+    Import { tgid: i64, wallet: PathBuf },
     /// Init database
     Init,
 }
 
 impl Command {
     /// Run command
-    pub async fn run(&self, context: Context, update: bool) -> Result<()> {
+    pub async fn run(&self, context: Context, config: Config, update: bool) -> Result<()> {
         // match commands
         match &self {
             Command::Init => {}
+            Command::Start => {
+                service::start(config, context).await?;
+            }
             Command::Sig { signature } => {
                 let tx = context.client.tx(signature).await?;
                 println!("{tx:#?}");

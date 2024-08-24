@@ -70,7 +70,7 @@ impl Takeover {
 
             if let Err(e) = r {
                 tracing::error!("{e}");
-                tokio::time::sleep(Duration::from_secs(20)).await;
+                tokio::time::sleep(Duration::from_secs(10)).await;
             }
         }
     }
@@ -113,9 +113,8 @@ impl Takeover {
     /// Start the reporter service
     pub async fn sub_alerts(&self, bot: &str, mut rx: Receiver<Vec<String>>) -> Result<()> {
         let bot = Bot::new(bot);
-        tracing::trace!("Starting takeover service ...");
+        tracing::info!("Starting takeover service ...");
         while let Some(mints) = rx.recv().await {
-            tracing::trace!("Received mints: {mints:?}");
             if let Err(e) = self.soldout(&bot, mints).await {
                 tracing::warn!("Failed to process event, error: {e}");
                 tokio::time::sleep(Duration::from_secs(5)).await;

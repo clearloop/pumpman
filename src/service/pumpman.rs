@@ -14,7 +14,7 @@ use teloxide::Bot;
 use tokio::{signal, task};
 
 /// Start pumpman service
-pub async fn pumpman(mut config: Config, context: Context) -> Result<()> {
+pub async fn start(mut config: Config, context: Context) -> Result<()> {
     let Some(mut pumpman) = config.pumpman.take() else {
         tracing::error!("pumpman config not found");
         return Ok(());
@@ -27,6 +27,7 @@ pub async fn pumpman(mut config: Config, context: Context) -> Result<()> {
 
     let bot = Bot::new(&bot);
     let context = PumpmanContext::new(context, pumpman.global.clone());
+    tracing::info!("Starting pumpman service ...");
 
     loop {
         let r = tokio::select! {
