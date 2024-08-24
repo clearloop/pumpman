@@ -1,7 +1,7 @@
 use callback::Callback;
 use command::Command;
 pub use context::PumpmanContext;
-use state::State;
+use state::{State, WithdrawState};
 use std::sync::Arc;
 use teloxide::{
     dispatching::dialogue::{
@@ -32,7 +32,9 @@ pub async fn start(bot: &Bot, context: PumpmanContext, redis: String) -> anyhow:
         .branch(case![Command::Wallet].endpoint(Command::wallet))
         .branch(case![Command::Config].endpoint(Command::config))
         .branch(case![Command::Fees].endpoint(Command::fees))
-        .branch(case![Command::List].endpoint(Command::list));
+        .branch(case![Command::List].endpoint(Command::list))
+        .branch(case![Command::Support].endpoint(Command::support))
+        .branch(case![Command::Faq].endpoint(Command::faq));
 
     let group = Update::filter_message()
         .filter(|msg: Message| msg.chat.is_group())
@@ -40,6 +42,7 @@ pub async fn start(bot: &Bot, context: PumpmanContext, redis: String) -> anyhow:
 
     let message = Update::filter_message()
         .branch(command)
+        .branch(case![State::Withdraw(state)].endpoint(WithdrawState::handle))
         .branch(dptree::endpoint(state::info_job));
 
     let callback = Update::filter_callback_query().branch(dptree::endpoint(Callback::handle));

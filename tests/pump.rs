@@ -1,12 +1,27 @@
 use anchor_lang::AccountDeserialize;
 use anyhow::Result;
-use replika::sol::pump::{
-    self,
-    accounts::{BondingCurve, Global},
-    GLOBAL, SOL_SCALE,
+use replika::{
+    api::PumpApi,
+    config::{Cluster, PumpmanProfile},
+    context::{Client, Redis},
+    sol::pump::{
+        self,
+        accounts::{BondingCurve, Global},
+        GLOBAL, SOL_SCALE,
+    },
 };
 use solana_client::rpc_client::RpcClient;
-use solana_sdk::pubkey::Pubkey;
+use solana_sdk::{pubkey::Pubkey, signature::Keypair, signer::Signer};
+
+fn cluster() -> Cluster {
+    Cluster {
+        helius: "https://mainnet.helius-rpc.com/?api-key=a4174161-7e9c-40ab-83ce-d7f288335380"
+            .parse()
+            .unwrap(),
+        http: "https://api.mainnet-beta.solana.com".parse().unwrap(),
+        ws: "wss://api.mainnet-beta.solana.com".parse().unwrap(),
+    }
+}
 
 #[test]
 fn test_keys() {
@@ -51,5 +66,30 @@ fn bonding_curve_calc() -> Result<()> {
 
     let bc = global.init();
     assert_eq!(global.buy(bc.real_sol_reserves, SOL_SCALE)?, 34612903225806);
+    Ok(())
+}
+
+#[tokio::test]
+async fn profile() -> Result<()> {
+    let client = Client::new(&cluster())?;
+    let redis = Redis::new(&"redis://localhost".parse()?)?;
+    // let pair = Keypair::from_bytes(&serde_json::from_slice::<Vec<u8>>(&fs::read(
+    //     PathBuf::from(
+    //         "/Users/clearloop/.config/solana/pm54gax6szHDoZ6x4PDV3pbCxvYioFgfR8xJxAemFgf.json",
+    //     ),
+    // )?)?)?;
+
+    let pair = Keypair::new();
+    let profile = PumpmanProfile {
+        username: None,
+        bio: "test".into(),
+        profile_image:
+            "https://pump.mypinata.cloud/ipfs/Qmf8myT22Ru6nHzRaRzkBBpYUFL1zTgk7nhiRLL4SN6rZX".into(),
+    };
+
+    // let j = serde_json::to_string_pretty(&profile);
+    // println!("{j:?}");
+    let pk = client.users(&profile, &pair, &mut redis.con()?).await?;
+    println!("{pk}");
     Ok(())
 }

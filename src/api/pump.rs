@@ -1,6 +1,8 @@
 #![allow(unused)]
 use crate::{
     api::{HttpClient, SolRpcApi},
+    config::PumpmanProfile,
+    context::Cache,
     model::pump::Coin,
     sol::{
         self,
@@ -18,7 +20,9 @@ use anchor_lang::AccountDeserialize;
 use anyhow::Result;
 use bigdecimal::{BigDecimal, ToPrimitive, Zero};
 use borsh::BorshSerialize;
-use redis::Connection;
+use redis::{Commands, Connection};
+use reqwest::StatusCode;
+use serde_json::json;
 use solana_client::rpc_response::RpcPrioritizationFee;
 use solana_sdk::{
     account::Account,
@@ -37,9 +41,78 @@ use std::{
 };
 
 const PUMPFUN: &str = "https://frontend-api.pump.fun";
+const SIGN_IN_MESSAGE: &str = "Sign in to pump.fun:";
+const AUTH_TOKEN: &str = "auth_token";
 
 /// pump.fun api set
 pub trait PumpApi: HttpClient + SolRpcApi {
+    /// Sign in to pump fun
+    async fn auth(&self, pair: &Keypair, con: &mut Connection) -> Result<String> {
+        let pubkey = pair.pubkey();
+        let key = Cache::PumpFunAuthToken(&pubkey);
+        if let Ok(token) = con.get(&key) {
+            return Ok(token);
+        }
+
+        let timestamp = time::OffsetDateTime::now_utc().unix_timestamp() * 1000;
+        let message = format!("{SIGN_IN_MESSAGE} {timestamp}");
+        let signature = bs58::encode(pair.sign_message(message.as_bytes())).into_string();
+        let body = json!({
+            "address": pair.pubkey().to_string(),
+            "timestamp": timestamp.to_string(),
+            "signature": signature
+        });
+
+        let res = self
+            .client()
+            .post(format!("{PUMPFUN}/auth/login"))
+            .header("Origin", "https://pump.fun")
+            .json(&body)
+            .send()
+            .await?;
+
+        for cookie in res.cookies() {
+            if cookie.name() != AUTH_TOKEN {
+                continue;
+            }
+
+            let value = cookie.value();
+            let max_age = cookie.max_age().unwrap_or_default().as_secs();
+            con.set_ex(&key, value, max_age)?;
+            return Ok(cookie.value().into());
+        }
+
+        anyhow::bail!(
+            "Failed to sign in to pump.fun with {}, no auth_token was found, code {}",
+            pair.pubkey(),
+            res.status()
+        );
+    }
+
+    async fn users(
+        &self,
+        profile: &PumpmanProfile,
+        pair: &Keypair,
+        con: &mut Connection,
+    ) -> Result<Pubkey> {
+        let token = self.auth(pair, con).await?;
+        let res = self
+            .client()
+            .post(format!("{PUMPFUN}/users"))
+            .header("Origin", "https://pump.fun")
+            .header("Cookie", format!("auth_token={token}"))
+            .json(profile)
+            .send()
+            .await?;
+
+        let pubkey = pair.pubkey();
+        if res.status() != StatusCode::CREATED {
+            anyhow::bail!("Failed to create profile for {pubkey}");
+        }
+
+        Ok(pubkey)
+    }
+
     /// get coin of pump fun
     async fn coin(&self, mint: &str, update: bool, con: &mut Connection) -> Result<Coin> {
         self.cget(&format!("{PUMPFUN}/coins/{mint}"), update, FIVE_MINS, con)
@@ -109,12 +182,7 @@ pub trait PumpApi: HttpClient + SolRpcApi {
             ixs.push(ix);
         }
 
-        ixs.append(&mut vec![
-            buy.clone(),
-            sell.clone(),
-            buy.clone(),
-            sell.clone(),
-        ]);
+        ixs.append(&mut vec![buy.clone(), sell.clone()]);
         ixs.push(ComputeBudgetInstruction::set_compute_unit_limit(640_000));
         ixs.push(ComputeBudgetInstruction::set_compute_unit_price(
             (BigDecimal::from_str("0.000040")? * MICRO_LAMPORTS_PER_LAMPORT / 640_000u64)

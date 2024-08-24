@@ -1,29 +1,38 @@
-use super::{message, state::State, BotDialogue, PumpmanContext};
 use crate::{
+    api::SolRpcApi,
     model::{Pumpman, PumpmanJob},
     schema::{pumpman_global, pumpmen},
-    telegram::Result,
+    telegram::{
+        pumpman::{
+            message,
+            state::{State, WithdrawState},
+            BotDialogue, PumpmanContext,
+        },
+        Result,
+    },
     utils::base64,
 };
+use bigdecimal::BigDecimal;
 use diesel::ExpressionMethods;
 use diesel_async::RunQueryDsl;
 use serde::{Deserialize, Serialize};
+use solana_sdk::{native_token::LAMPORTS_PER_SOL, signer::Signer};
 use teloxide::{
     payloads::EditMessageTextSetters,
     prelude::Message,
     requests::Requester,
-    types::{CallbackQuery, InlineKeyboardButton, ParseMode},
+    types::{CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, ParseMode},
     Bot,
 };
 
 #[derive(Debug, Serialize, Deserialize)]
 pub enum Callback {
     DoNothing,
-    Withdraw,
     BackToList,
     Job { job: i64, command: JobCommand },
     Global(JobCommand),
     List(ListCallback),
+    Withdraw(WithdrawCallback),
 }
 
 impl Callback {
@@ -55,6 +64,7 @@ impl Callback {
             Callback::Global(command) => command.handle_global(bot, context, msg).await,
             Callback::List(l) => l.handle(bot, dialogue, context, msg).await,
             Callback::BackToList => Self::back(bot, context, msg).await,
+            Callback::Withdraw(w) => w.handle(bot, dialogue, context, msg).await,
             _ => Ok(()),
         }
     }
@@ -130,13 +140,11 @@ impl JobCommand {
     ) -> Result<()> {
         let state = dialogue.get().await?;
         if state == Some(State::NoUpdateMarkup) {
-            dialogue.update(State::Start).await?;
             return Ok(());
         }
 
         let mut markup = job.markup(&context.global)?;
         if state == Some(State::BackToList) {
-            dialogue.update(State::Start).await?;
             markup
                 .inline_keyboard
                 .push(vec![InlineKeyboardButton::callback(
@@ -264,5 +272,96 @@ impl ListCallback {
             .await?;
 
         Self::update_list(bot, context, msg).await
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub enum WithdrawCallback {
+    Input,
+    Cancel,
+    Confirm,
+}
+
+impl WithdrawCallback {
+    async fn handle(
+        &self,
+        bot: Bot,
+        dialogue: BotDialogue,
+        context: PumpmanContext,
+        msg: Message,
+    ) -> Result<()> {
+        match self {
+            Self::Confirm => Self::confirm(bot, dialogue, context, msg).await,
+            Self::Cancel => Self::cancel(bot, context, msg).await,
+            Self::Input => Self::input(bot, dialogue, context, msg).await,
+        }
+    }
+
+    async fn input(
+        bot: Bot,
+        dialogue: BotDialogue,
+        context: PumpmanContext,
+        msg: Message,
+    ) -> Result<()> {
+        let tgid = msg.chat.id.0;
+        let wallet = context.wallet(tgid).await?;
+        let pubkey = wallet.pubkey();
+        let balance = context.client.helius().get_balance(&pubkey).await?;
+
+        dialogue
+            .update(State::Withdraw(WithdrawState::Input(msg.id)))
+            .await?;
+
+        bot.edit_message_text(msg.chat.id, msg.id, message::iwithdraw(balance))
+            .parse_mode(ParseMode::Html)
+            .reply_markup(InlineKeyboardMarkup::new(vec![vec![
+                InlineKeyboardButton::callback(
+                    "Cancel",
+                    Callback::Withdraw(WithdrawCallback::Cancel).format()?,
+                ),
+            ]]))
+            .await?;
+        Ok(())
+    }
+
+    async fn confirm(
+        bot: Bot,
+        dialogue: BotDialogue,
+        context: PumpmanContext,
+        msg: Message,
+    ) -> Result<()> {
+        let Some(State::Withdraw(WithdrawState::Check(recipient))) = dialogue.get().await? else {
+            return Ok(());
+        };
+
+        let tgid = msg.chat.id.0;
+        let wallet = context.wallet(tgid).await?;
+        let tx = context.client.withdraw(&wallet, &recipient).await?;
+        let sig = context.client.helius().send_transaction(&tx).await?;
+
+        bot.edit_message_text(msg.chat.id, msg.id, message::withdraw(sig))
+            .await?;
+
+        Ok(())
+    }
+
+    async fn cancel(bot: Bot, context: PumpmanContext, msg: Message) -> Result<()> {
+        let tgid = msg.chat.id.0;
+        let wallet = context.wallet(tgid).await?;
+        let pubkey = wallet.pubkey();
+        let balance = (BigDecimal::from(context.client.rpc().get_balance(&pubkey).await?)
+            / LAMPORTS_PER_SOL)
+            .round(6);
+
+        bot.edit_message_text(msg.chat.id, msg.id, message::wallet(&pubkey).await?)
+            .parse_mode(ParseMode::Html)
+            .reply_markup(InlineKeyboardMarkup::new(vec![vec![
+                InlineKeyboardButton::callback(
+                    format!("Withdraw ({balance} SOL)"),
+                    Callback::Withdraw(WithdrawCallback::Input).format()?,
+                ),
+            ]]))
+            .await?;
+        Ok(())
     }
 }

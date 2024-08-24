@@ -29,6 +29,7 @@ pub enum Cache<'t> {
     Aca(&'t Pubkey),
     PumpPriorityFee,
     PumpFeeBasisPoints,
+    PumpFunAuthToken(&'t Pubkey),
 }
 
 impl<'t> ToRedisArgs for Cache<'t> {
@@ -46,6 +47,7 @@ impl<'t> ToRedisArgs for Cache<'t> {
             Self::Aca(acc) => format!("task::pumpman::aca::{acc}"),
             Self::PumpPriorityFee => "task::pumpman::pump::priority_fee".into(),
             Self::PumpFeeBasisPoints => "task::pumpman::pump::global::fee_basis_points".into(),
+            Self::PumpFunAuthToken(pubkey) => format!("task::pumpfun::auth_token::{pubkey}"),
         }
         .write_redis_args(out)
     }

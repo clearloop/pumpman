@@ -103,6 +103,11 @@ pub enum Command {
         amount: BigDecimal,
         payer: PathBuf,
     },
+    /// Simulate withdraw
+    SimWithdraw {
+        to: Pubkey,
+        payer: PathBuf,
+    },
     PumpFee,
     /// Get balance
     Balance {
@@ -255,7 +260,10 @@ impl Command {
                         RpcSimulateTransactionConfig {
                             accounts: Some(RpcSimulateTransactionAccountsConfig {
                                 encoding: Some(UiAccountEncoding::JsonParsed),
-                                addresses: vec![format!("{pubkey}")],
+                                addresses: vec![
+                                    format!("{pubkey}"),
+                                    // "8VJb5raJxzy8ForP1jArfKkM34UaagtVd7B61C1bSqhn".to_string(),
+                                ],
                             }),
                             ..Default::default()
                         },
@@ -269,15 +277,58 @@ impl Command {
                 println!("{logs:#?}");
 
                 let accounts: Vec<_> = resp.value.accounts.unwrap();
+                let sender = accounts.get(0).unwrap().clone().unwrap();
+                // let receiver = accounts.get(1).unwrap().clone().unwrap();
                 println!(
                     "Cost: {} SOL",
-                    ((BigDecimal::from(balance)
-                        - accounts.get(0).unwrap().clone().unwrap().lamports)
-                        / LAMPORTS_PER_SOL)
-                        .round(6)
+                    ((BigDecimal::from(balance) - sender.lamports) / LAMPORTS_PER_SOL).round(6)
                 );
                 println!("Fee {fee} ({} SOL)", BigDecimal::from(fee) / SOL_SCALE);
+                // println!(
+                //     "Received {fee} ({} SOL)",
+                //     (BigDecimal::from(receiver.lamports) / LAMPORTS_PER_SOL).round(6)
+                // );
                 println!("Size: {}", bytes.len());
+            }
+            Command::SimWithdraw { to, payer } => {
+                let payer =
+                    Keypair::from_bytes(&serde_json::from_slice::<Vec<u8>>(&fs::read(payer)?)?)?;
+                let pubkey = payer.pubkey();
+                let tx = context.client.withdraw(&payer, to).await?;
+                let balance = context.client.helius().get_balance(&pubkey).await?;
+                let resp = context
+                    .client
+                    .helius()
+                    .simulate_transaction_with_config(
+                        &tx,
+                        RpcSimulateTransactionConfig {
+                            accounts: Some(RpcSimulateTransactionAccountsConfig {
+                                encoding: Some(UiAccountEncoding::JsonParsed),
+                                addresses: vec![format!("{pubkey}"), to.to_string()],
+                            }),
+                            ..Default::default()
+                        },
+                    )
+                    .await?;
+                let fee = context
+                    .client
+                    .helius()
+                    .get_fee_for_message(tx.message())
+                    .await?;
+                println!("{resp:#?}");
+
+                let accounts: Vec<_> = resp.value.accounts.unwrap();
+                let sender = accounts.get(0).unwrap().clone().unwrap();
+                let receiver = accounts.get(1).unwrap().clone().unwrap();
+                println!(
+                    "Cost: {} SOL",
+                    ((BigDecimal::from(balance) - sender.lamports) / LAMPORTS_PER_SOL).round(6)
+                );
+                println!(
+                    "Received {fee} ({} SOL)",
+                    (BigDecimal::from(receiver.lamports) / LAMPORTS_PER_SOL).round(6)
+                );
+                println!("Fee {fee} ({} SOL)", BigDecimal::from(fee) / SOL_SCALE);
             }
         }
 

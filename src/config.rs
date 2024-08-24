@@ -99,8 +99,19 @@ pub struct PumpmanGlobal {
     pub speed: i32,
     /// Pumpman cache config
     pub cache: PumpmanCache,
+    /// Profile config of pumpman
+    pub profile: PumpmanProfile,
     /// treasury account
     pub treasury: String,
+}
+
+/// Pumpman config context
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(rename_all(serialize = "camelCase"))]
+pub struct PumpmanProfile {
+    pub username: Option<String>,
+    pub bio: String,
+    pub profile_image: String,
 }
 
 /// Cache config of pumpman

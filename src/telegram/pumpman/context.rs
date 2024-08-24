@@ -23,6 +23,7 @@ use diesel::prelude::*;
 use diesel_async::RunQueryDsl;
 use redis::Commands;
 use redis::Connection;
+use solana_client::{client_error::ClientErrorKind, rpc_request::RpcError};
 use solana_sdk::{
     compute_budget::ComputeBudgetInstruction,
     instruction::Instruction,
@@ -38,6 +39,7 @@ use std::{
     str::FromStr,
     sync::Arc,
 };
+use time::OffsetDateTime;
 
 /// Wrapped context
 #[derive(Clone)]
@@ -60,6 +62,15 @@ impl PumpmanContext {
     pub async fn bump(&self, global: &Global, job: &Pumpman) -> Result<()> {
         let tx = self.bump_tx(global, job).await?;
         if let Err(e) = self.client.helius().send_transaction(&tx).await {
+            if let ClientErrorKind::RpcError(RpcError::RpcResponseError { code, .. }) = e.kind() {
+                // NOTE:
+                //
+                // RPC response error -32002: Transaction simulation failed: Blockhash not found
+                if *code == -32002 {
+                    return Ok(());
+                }
+            }
+
             if let Some(err) = e.get_transaction_error() {
                 match err {
                     TransactionError::BlockhashNotFound => {}
@@ -86,7 +97,7 @@ impl PumpmanContext {
         let resp = self.client.helius().simulate_transaction(&tx).await?;
         if let Some(err) = resp.value.err {
             match err {
-                TransactionError::BlockhashNotFound => {}
+                TransactionError::BlockhashNotFound => return Ok(()),
                 _ => anyhow::bail!("{err:?}"),
             }
         }
@@ -100,6 +111,7 @@ impl PumpmanContext {
             ))
             .execute(postgres)
             .await?;
+
         Ok(())
     }
 
@@ -153,6 +165,23 @@ impl PumpmanContext {
 
         let bytes = bs58::decode(wallet).into_vec()?;
         Keypair::from_bytes(&bytes).map_err(Into::into)
+    }
+
+    /// Create a new user
+    pub async fn create_user(&self, tgid: i64) -> Result<User> {
+        let con = &mut self.redis()?;
+        let wallet = Keypair::new();
+
+        if let Err(e) = self.client.users(&self.global.profile, &wallet, con).await {
+            tracing::warn!("Failed to create profile for {}, {e}", wallet.pubkey());
+        }
+
+        Ok(User {
+            id: None,
+            created_at: OffsetDateTime::now_utc().date(),
+            tgid,
+            wallet: bs58::encode(wallet.to_bytes()).into_string(),
+        })
     }
 
     pub async fn pglobal(&self, tgid: i64) -> Result<PumpmanGlobal> {
