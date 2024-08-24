@@ -32,7 +32,9 @@ pub async fn start(bot: &Bot, context: PumpmanContext, redis: String) -> anyhow:
         .branch(case![Command::Wallet].endpoint(Command::wallet))
         .branch(case![Command::Config].endpoint(Command::config))
         .branch(case![Command::Fees].endpoint(Command::fees))
-        .branch(case![Command::List].endpoint(Command::list));
+        .branch(case![Command::List].endpoint(Command::list))
+        .branch(case![Command::Support].endpoint(Command::support))
+        .branch(case![Command::Faq].endpoint(Command::faq));
 
     let group = Update::filter_message()
         .filter(|msg: Message| msg.chat.is_group())

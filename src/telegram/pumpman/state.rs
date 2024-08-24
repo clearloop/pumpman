@@ -33,12 +33,7 @@ pub enum State {
 }
 
 /// Handle any message
-pub async fn info_job(
-    bot: Bot,
-    dialogue: BotDialogue,
-    context: PumpmanContext,
-    msg: Message,
-) -> Result<()> {
+pub async fn info_job(bot: Bot, context: PumpmanContext, msg: Message) -> Result<()> {
     let Some(text) = &msg.text() else {
         return Ok(());
     };
@@ -55,7 +50,7 @@ pub async fn info_job(
     let tgid = msg.chat.id.0;
     let mint = text.trim_start_matches(PUMPFUN_BASE);
     let job = context.job(tgid, mint).await?;
-    dialogue.update(State::Start).await?;
+
     bot.send_message(msg.chat.id, message::job(&context, &job).await?)
         .parse_mode(ParseMode::Html)
         .reply_markup(job.markup(&context.global)?)

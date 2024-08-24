@@ -18,7 +18,11 @@ use teloxide::{
     Bot,
 };
 
-use super::callback::{Callback, WithdrawCallback};
+use super::{
+    callback::{Callback, WithdrawCallback},
+    state::State,
+    BotDialogue,
+};
 
 #[derive(BotCommands, Clone)]
 #[command(
@@ -41,14 +45,27 @@ pub enum Command {
     /// List all running jobs
     #[command(description = "List all jobs.")]
     List,
+    /// Show support
+    #[command(description = "Get support")]
+    Support,
+    /// Show FAQ
+    #[command(description = "Show FAQ")]
+    Faq,
 }
 
 impl Command {
     /// command start
-    pub async fn start(bot: Bot, context: PumpmanContext, msg: Message) -> Result<()> {
+    pub async fn start(
+        bot: Bot,
+        dialogue: BotDialogue,
+        context: PumpmanContext,
+        msg: Message,
+    ) -> Result<()> {
         bot.send_message(msg.chat.id, message::menu(&context, msg.chat.id.0).await?)
             .parse_mode(ParseMode::Html)
             .await?;
+
+        dialogue.update(State::Start).await?;
         Ok(())
     }
 
@@ -97,6 +114,22 @@ impl Command {
         bot.send_message(msg.chat.id, message::list(&jobs))
             .parse_mode(ParseMode::Html)
             .reply_markup(message::list_markup(&context, &jobs).await?)
+            .await?;
+        Ok(())
+    }
+
+    /// Show FAQ
+    pub async fn faq(bot: Bot, msg: Message) -> Result<()> {
+        bot.send_message(msg.chat.id, message::FAQ)
+            .parse_mode(ParseMode::Html)
+            .await?;
+        Ok(())
+    }
+
+    /// Show FAQ
+    pub async fn support(bot: Bot, msg: Message) -> Result<()> {
+        bot.send_message(msg.chat.id, "@todamup")
+            .parse_mode(ParseMode::Html)
             .await?;
         Ok(())
     }
