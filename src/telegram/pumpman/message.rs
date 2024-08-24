@@ -2,15 +2,16 @@ use crate::{
     api::{PumpApi, SolRpcApi},
     model::{Pumpman, PumpmanGlobal, PumpmanJob},
     telegram::{
-        pumpman::{callback::Callback, PumpmanContext},
+        pumpman::{
+            callback::{Callback, ListCallback, WithdrawCallback},
+            PumpmanContext,
+        },
         Result,
     },
 };
 use bigdecimal::{BigDecimal, Zero};
 use solana_sdk::{native_token::LAMPORTS_PER_SOL, pubkey::Pubkey, signer::Signer};
 use teloxide::types::{InlineKeyboardButton, InlineKeyboardMarkup};
-
-use super::callback::ListCallback;
 
 /// message while entring group
 pub const ENTER_GROUP: &str = r#"
@@ -176,4 +177,33 @@ pub async fn list_markup(
         InlineKeyboardButton::callback("Stop", Callback::list(ListCallback::StopAll).format()?),
     ]);
     Ok(InlineKeyboardMarkup::new(kbs))
+}
+
+pub fn iwithdraw(balance: u64) -> String {
+    format!(
+        r#"Enter an address to refund <code>{} (approx)</code>"#,
+        (BigDecimal::from(balance) / LAMPORTS_PER_SOL).round(6)
+    )
+}
+
+pub fn cwithdraw(balance: u64, recipient: &Pubkey) -> String {
+    format!(
+        r#"
+Sending <code>{} (approx)</code> to <code>{recipient}</code> ?
+"#,
+        (BigDecimal::from(balance) / LAMPORTS_PER_SOL).round(6)
+    )
+}
+
+pub fn cwithdraw_markup() -> Result<InlineKeyboardMarkup> {
+    Ok(InlineKeyboardMarkup::new(vec![vec![
+        InlineKeyboardButton::callback(
+            "Cancel",
+            Callback::Withdraw(WithdrawCallback::Cancel).format()?,
+        ),
+        InlineKeyboardButton::callback(
+            "Confirm",
+            Callback::Withdraw(WithdrawCallback::Confirm).format()?,
+        ),
+    ]]))
 }

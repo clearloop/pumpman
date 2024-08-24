@@ -1,7 +1,7 @@
 use callback::Callback;
 use command::Command;
 pub use context::PumpmanContext;
-use state::State;
+use state::{State, WithdrawState};
 use std::sync::Arc;
 use teloxide::{
     dispatching::dialogue::{
@@ -40,6 +40,7 @@ pub async fn start(bot: &Bot, context: PumpmanContext, redis: String) -> anyhow:
 
     let message = Update::filter_message()
         .branch(command)
+        .branch(case![State::Withdraw(state)].endpoint(WithdrawState::handle))
         .branch(dptree::endpoint(state::info_job));
 
     let callback = Update::filter_callback_query().branch(dptree::endpoint(Callback::handle));

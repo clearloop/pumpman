@@ -260,7 +260,10 @@ impl Command {
                         RpcSimulateTransactionConfig {
                             accounts: Some(RpcSimulateTransactionAccountsConfig {
                                 encoding: Some(UiAccountEncoding::JsonParsed),
-                                addresses: vec![format!("{pubkey}")],
+                                addresses: vec![
+                                    format!("{pubkey}"),
+                                    // "8VJb5raJxzy8ForP1jArfKkM34UaagtVd7B61C1bSqhn".to_string(),
+                                ],
                             }),
                             ..Default::default()
                         },
@@ -274,14 +277,17 @@ impl Command {
                 println!("{logs:#?}");
 
                 let accounts: Vec<_> = resp.value.accounts.unwrap();
+                let sender = accounts.get(0).unwrap().clone().unwrap();
+                // let receiver = accounts.get(1).unwrap().clone().unwrap();
                 println!(
                     "Cost: {} SOL",
-                    ((BigDecimal::from(balance)
-                        - accounts.get(0).unwrap().clone().unwrap().lamports)
-                        / LAMPORTS_PER_SOL)
-                        .round(6)
+                    ((BigDecimal::from(balance) - sender.lamports) / LAMPORTS_PER_SOL).round(6)
                 );
                 println!("Fee {fee} ({} SOL)", BigDecimal::from(fee) / SOL_SCALE);
+                // println!(
+                //     "Received {fee} ({} SOL)",
+                //     (BigDecimal::from(receiver.lamports) / LAMPORTS_PER_SOL).round(6)
+                // );
                 println!("Size: {}", bytes.len());
             }
             Command::SimWithdraw { to, payer } => {
@@ -298,7 +304,7 @@ impl Command {
                         RpcSimulateTransactionConfig {
                             accounts: Some(RpcSimulateTransactionAccountsConfig {
                                 encoding: Some(UiAccountEncoding::JsonParsed),
-                                addresses: vec![format!("{pubkey}")],
+                                addresses: vec![format!("{pubkey}"), to.to_string()],
                             }),
                             ..Default::default()
                         },
@@ -312,15 +318,17 @@ impl Command {
                 println!("{resp:#?}");
 
                 let accounts: Vec<_> = resp.value.accounts.unwrap();
+                let sender = accounts.get(0).unwrap().clone().unwrap();
+                let receiver = accounts.get(1).unwrap().clone().unwrap();
                 println!(
                     "Cost: {} SOL",
-                    ((BigDecimal::from(balance)
-                        - accounts.get(0).unwrap().clone().unwrap().lamports)
-                        / LAMPORTS_PER_SOL)
-                        .round(6)
+                    ((BigDecimal::from(balance) - sender.lamports) / LAMPORTS_PER_SOL).round(6)
+                );
+                println!(
+                    "Received {fee} ({} SOL)",
+                    (BigDecimal::from(receiver.lamports) / LAMPORTS_PER_SOL).round(6)
                 );
                 println!("Fee {fee} ({} SOL)", BigDecimal::from(fee) / SOL_SCALE);
-                // println!("Size: {}", bytes.len());
             }
         }
 

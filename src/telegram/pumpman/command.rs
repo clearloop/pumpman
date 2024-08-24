@@ -18,7 +18,7 @@ use teloxide::{
     Bot,
 };
 
-use super::callback::Callback;
+use super::callback::{Callback, WithdrawCallback};
 
 #[derive(BotCommands, Clone)]
 #[command(
@@ -65,7 +65,7 @@ impl Command {
             .reply_markup(ReplyMarkup::inline_kb(vec![vec![
                 InlineKeyboardButton::callback(
                     format!("Withdraw ({balance} SOL)"),
-                    Callback::Withdraw.format()?,
+                    Callback::Withdraw(WithdrawCallback::Input).format()?,
                 ),
             ]]))
             .await?;
