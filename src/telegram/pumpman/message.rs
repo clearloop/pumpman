@@ -104,7 +104,7 @@ pub async fn job(context: &PumpmanContext, job: &Pumpman) -> Result<String> {
     let coin = context.client.coin(&job.mint, true, redis).await?;
     let wallet = context.wallet(job.owner).await?;
     let pubkey = wallet.pubkey();
-    let balance = context.client.rpc().get_balance(&pubkey).await?;
+    let balance = context.client.helius().get_balance(&pubkey).await?;
     let sol = BigDecimal::from(&balance) / LAMPORTS_PER_SOL;
 
     let fee_basis_points = context.fee_basis_points().await?;
@@ -188,22 +188,36 @@ pub fn iwithdraw(balance: u64) -> String {
 
 pub fn cwithdraw(balance: u64, recipient: &Pubkey) -> String {
     format!(
-        r#"
-Sending <code>{} (approx)</code> to <code>{recipient}</code> ?
-"#,
+        r#"Sending <code>{} (approx)</code> to <code>{recipient}</code> ?"#,
         (BigDecimal::from(balance) / LAMPORTS_PER_SOL).round(6)
     )
 }
 
-pub fn cwithdraw_markup() -> Result<InlineKeyboardMarkup> {
-    Ok(InlineKeyboardMarkup::new(vec![vec![
-        InlineKeyboardButton::callback(
-            "Cancel",
-            Callback::Withdraw(WithdrawCallback::Cancel).format()?,
-        ),
-        InlineKeyboardButton::callback(
-            "Confirm",
-            Callback::Withdraw(WithdrawCallback::Confirm).format()?,
-        ),
-    ]]))
+pub fn cwithdraw_markup(recipient: &Pubkey) -> Result<InlineKeyboardMarkup> {
+    Ok(InlineKeyboardMarkup::new(vec![
+        vec![InlineKeyboardButton::url(
+            "solscan",
+            format!("https://solscan.io/account/{recipient}").parse()?,
+        )],
+        vec![
+            InlineKeyboardButton::callback(
+                "Cancel",
+                Callback::Withdraw(WithdrawCallback::Cancel).format()?,
+            ),
+            InlineKeyboardButton::callback(
+                "Confirm",
+                Callback::Withdraw(WithdrawCallback::Confirm).format()?,
+            ),
+        ],
+    ]))
+}
+
+pub fn withdraw(sig: impl std::fmt::Display) -> String {
+    format!(
+        r#"
+Transaction sent ^ ^
+
+https://solscan.io/tx/{sig}
+"#,
+    )
 }

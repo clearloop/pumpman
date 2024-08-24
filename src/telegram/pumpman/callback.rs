@@ -325,12 +325,23 @@ impl WithdrawCallback {
     }
 
     async fn confirm(
-        _bot: Bot,
-        _dialogue: BotDialogue,
-        _context: PumpmanContext,
-        _msg: Message,
+        bot: Bot,
+        dialogue: BotDialogue,
+        context: PumpmanContext,
+        msg: Message,
     ) -> Result<()> {
-        // TODO: after transfering, send the signature
+        let Some(State::Withdraw(WithdrawState::Check(recipient))) = dialogue.get().await? else {
+            return Ok(());
+        };
+
+        let tgid = msg.chat.id.0;
+        let wallet = context.wallet(tgid).await?;
+        let tx = context.client.withdraw(&wallet, &recipient).await?;
+        let sig = context.client.helius().send_transaction(&tx).await?;
+
+        bot.edit_message_text(msg.chat.id, msg.id, message::withdraw(sig))
+            .await?;
+
         Ok(())
     }
 

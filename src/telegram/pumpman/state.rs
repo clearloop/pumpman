@@ -108,7 +108,7 @@ impl WithdrawState {
 
         bot.edit_message_text(msg.chat.id, orgmid, message::cwithdraw(balance, &recipient))
             .parse_mode(ParseMode::Html)
-            .reply_markup(message::cwithdraw_markup()?)
+            .reply_markup(message::cwithdraw_markup(&recipient)?)
             .await?;
 
         bot.delete_message(msg.chat.id, msg.id).await?;

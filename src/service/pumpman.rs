@@ -68,7 +68,7 @@ async fn bumping(context: PumpmanContext, speed: Speed) -> Result<()> {
             let context = context.clone();
             task::spawn(async move {
                 let job_id = job.id();
-                if let Err(e) = context.simulate_bump(&global, &job).await {
+                if let Err(e) = context.bump(&global, &job).await {
                     tracing::warn!("job {job_id} failed: {e:?}");
 
                     if let Err(e) = context.stop(job.id()).await {

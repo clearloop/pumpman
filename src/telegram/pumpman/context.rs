@@ -23,6 +23,7 @@ use diesel::prelude::*;
 use diesel_async::RunQueryDsl;
 use redis::Commands;
 use redis::Connection;
+use solana_client::{client_error::ClientErrorKind, rpc_request::RpcError};
 use solana_sdk::{
     compute_budget::ComputeBudgetInstruction,
     instruction::Instruction,
@@ -61,6 +62,15 @@ impl PumpmanContext {
     pub async fn bump(&self, global: &Global, job: &Pumpman) -> Result<()> {
         let tx = self.bump_tx(global, job).await?;
         if let Err(e) = self.client.helius().send_transaction(&tx).await {
+            if let ClientErrorKind::RpcError(RpcError::RpcResponseError { code, .. }) = e.kind() {
+                // NOTE:
+                //
+                // RPC response error -32002: Transaction simulation failed: Blockhash not found
+                if *code == -32002 {
+                    return Ok(());
+                }
+            }
+
             if let Some(err) = e.get_transaction_error() {
                 match err {
                     TransactionError::BlockhashNotFound => {}

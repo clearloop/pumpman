@@ -96,7 +96,7 @@ pub trait SolRpcApi {
         Ok(accs)
     }
 
-    async fn withdraw(&self, wallet: &Keypair, recipient: String) -> Result<Transaction> {
+    async fn withdraw(&self, wallet: &Keypair, recipient: &Pubkey) -> Result<Transaction> {
         let helius = self.helius();
         let pubkey = wallet.pubkey();
         let balance = helius.get_balance(&pubkey).await?;
@@ -105,7 +105,7 @@ pub trait SolRpcApi {
         let ixs = vec![
             system_instruction::transfer(
                 &pubkey,
-                &recipient.parse()?,
+                recipient,
                 balance.saturating_sub(fee.lamports()?.saturating_add(LAMPORTS_PER_SIGNATURE)),
             ),
             ComputeBudgetInstruction::set_compute_unit_limit(6_000),
