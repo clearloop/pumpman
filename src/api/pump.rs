@@ -95,7 +95,7 @@ pub trait PumpApi: HttpClient + SolRpcApi {
         pair: &Keypair,
         con: &mut Connection,
     ) -> Result<Pubkey> {
-        let token = self.auth(&pair, con).await?;
+        let token = self.auth(pair, con).await?;
         let res = self
             .client()
             .post(format!("{PUMPFUN}/users"))

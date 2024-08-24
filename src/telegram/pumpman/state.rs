@@ -98,7 +98,7 @@ impl WithdrawState {
 
         let recipient = Pubkey::from_str(text)?;
         dialogue
-            .update(State::Withdraw(WithdrawState::Check(recipient.clone())))
+            .update(State::Withdraw(WithdrawState::Check(recipient)))
             .await?;
 
         let tgid = msg.chat.id.0;

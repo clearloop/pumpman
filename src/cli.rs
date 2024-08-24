@@ -294,7 +294,7 @@ impl Command {
                 let payer =
                     Keypair::from_bytes(&serde_json::from_slice::<Vec<u8>>(&fs::read(payer)?)?)?;
                 let pubkey = payer.pubkey();
-                let tx = context.client.withdraw(&payer, &to).await?;
+                let tx = context.client.withdraw(&payer, to).await?;
                 let balance = context.client.helius().get_balance(&pubkey).await?;
                 let resp = context
                     .client

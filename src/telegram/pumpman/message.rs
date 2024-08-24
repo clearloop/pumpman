@@ -123,7 +123,7 @@ Your Wallet Address: <code>{pubkey}</code> ( <code>{} SOL</code> )
         coin.name,
         coin.symbol,
         sol.round(6),
-        sol.round(6).min((&job.amount).round(6)),
+        sol.round(6).min((job.amount).round(6)),
         (sol - &job.amount).max(BigDecimal::zero()).round(6),
         coin.symbol,
         job.duration(&fee, balance)
