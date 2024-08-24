@@ -221,7 +221,7 @@ pub trait PumpApi: HttpClient + SolRpcApi {
 
     async fn priority_fee(&self) -> Result<u64> {
         let fees: Vec<RpcPrioritizationFee> = self
-            .rpc()
+            .helius()
             .get_recent_prioritization_fees(&[pump::ID])
             .await?
             .into_iter()

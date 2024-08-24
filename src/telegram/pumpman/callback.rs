@@ -349,7 +349,7 @@ impl WithdrawCallback {
         let tgid = msg.chat.id.0;
         let wallet = context.wallet(tgid).await?;
         let pubkey = wallet.pubkey();
-        let balance = (BigDecimal::from(context.client.rpc().get_balance(&pubkey).await?)
+        let balance = (BigDecimal::from(context.client.helius().get_balance(&pubkey).await?)
             / LAMPORTS_PER_SOL)
             .round(6);
 

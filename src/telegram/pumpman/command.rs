@@ -73,7 +73,7 @@ impl Command {
     pub async fn wallet(bot: Bot, context: PumpmanContext, msg: Message) -> Result<()> {
         let wallet = context.wallet(msg.chat.id.0).await?;
         let pubkey = wallet.pubkey();
-        let balance = (BigDecimal::from(context.client.rpc().get_balance(&pubkey).await?)
+        let balance = (BigDecimal::from(context.client.helius().get_balance(&pubkey).await?)
             / SOL_SCALE)
             .round(6);
 
