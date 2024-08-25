@@ -15,8 +15,8 @@ pub async fn start(config: Config, context: Context) -> Result<()> {
     loop {
         let r = tokio::select! {
             _ = signal::ctrl_c() => break,
-            r = pumpman::start(config.clone(), context.clone()), if config.pumpman.is_some() => r,
-            r = Takeover::start(config.clone(), context.clone()), if config.takeover.is_some() => r,
+            r = pumpman::start(config.clone(), context.clone(), false), if config.pumpman.is_some() => r,
+            r = Takeover::start(config.clone(), context.clone(), false), if config.takeover.is_some() => r,
         };
 
         if let Err(e) = r {

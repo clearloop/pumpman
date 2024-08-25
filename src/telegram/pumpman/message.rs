@@ -118,9 +118,9 @@ Job <a href="https://pump.fun/{}">{} (${})</a>
 
 Your Wallet Address: <code>{pubkey}</code>
 
-* <code>{bumps} bumps</code> in <b>10 mins</b> with current config: <code>{} SOL</code>
 * <b>Reserved balance</b> for bump amount: <code>{} SOL</code>
 * <b>Free balance</b> for /fees: <code>{} SOL</code> which can bump ${} for around <code>{}</code>.
+  * <code>{bumps} bumps</code> in <b>10 mins</b> with current config: <code>{} SOL</code>
 "#,
         coin.mint,
         coin.name,
@@ -129,7 +129,7 @@ Your Wallet Address: <code>{pubkey}</code>
         (sol - &job.amount).max(BigDecimal::zero()).round(6),
         coin.symbol,
         job.duration(&fee, balance),
-        fee10.round(6)
+        fee10.round(6),
     ))
 }
 

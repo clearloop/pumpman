@@ -42,7 +42,7 @@ impl Takeover {
     }
 
     /// Start the service
-    pub async fn start(mut config: Config, context: Context) -> Result<()> {
+    pub async fn start(mut config: Config, context: Context, ctrl_c: bool) -> Result<()> {
         let Some(mut takeover) = config.takeover.take() else {
             tracing::debug!("No config found for takeover service");
             return Ok(());
@@ -58,7 +58,7 @@ impl Takeover {
             let (tx, rx) = mpsc::channel::<Vec<String>>(50);
 
             let r = tokio::select! {
-                _ = signal::ctrl_c() => break Ok(()),
+                _ = signal::ctrl_c(), if ctrl_c => break Ok(()),
                 r = service.sub_pump(config.cluster.ws.as_ref(), tx) => r,
                 r = service.sub_alerts(&bot, rx) => r,
                 r = takeover::start(
