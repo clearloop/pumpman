@@ -109,24 +109,27 @@ pub async fn job(context: &PumpmanContext, job: &Pumpman) -> Result<String> {
 
     let fee_basis_points = context.fee_basis_points().await?;
     let fee = job.fee(&context.global, fee_basis_points);
+    let bumps = 10 * 60 / job.speed;
+    let fee10: BigDecimal = &fee * bumps;
 
     Ok(format!(
         r#"
 Job <a href="https://pump.fun/{}">{} (${})</a>
 
-Your Wallet Address: <code>{pubkey}</code> ( <code>{} SOL</code> )
+Your Wallet Address: <code>{pubkey}</code>
 
+* <code>{bumps} bumps</code> in <b>10 mins</b> with current config: <code>{} SOL</code>
 * <b>Reserved balance</b> for bump amount: <code>{} SOL</code>
 * <b>Free balance</b> for /fees: <code>{} SOL</code> which can bump ${} for around <code>{}</code>.
 "#,
         coin.mint,
         coin.name,
         coin.symbol,
-        sol.round(6),
         sol.round(6).min((job.amount).round(6)),
         (sol - &job.amount).max(BigDecimal::zero()).round(6),
         coin.symbol,
-        job.duration(&fee, balance)
+        job.duration(&fee, balance),
+        fee10.round(6)
     ))
 }
 
@@ -139,6 +142,8 @@ pub fn list(jobs: &[Pumpman]) -> String {
 You currently have <code>{total}</code> jobs in total, <code>{active}</code> of them are active.
 
 Tap job names to enter their dashboards. You can safely <code>delete</code> inactive jobs. Allocated balance will automatically return to your /wallet upon deletion.
+
+NOTE: Only jobs have processed bumps will be listed here.
 "#
     )
 }
@@ -149,7 +154,7 @@ pub async fn list_markup(
 ) -> Result<InlineKeyboardMarkup> {
     let redis = &mut context.redis()?;
     let mut kbs = Vec::new();
-    for job in jobs {
+    for job in jobs.into_iter() {
         let coin = context.client.coin(&job.mint, false, redis).await?;
         let job_id = job.id();
         let mut commands = vec![InlineKeyboardButton::callback(

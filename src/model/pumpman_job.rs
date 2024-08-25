@@ -208,7 +208,7 @@ impl PumpmanJob for Pumpman {
     fn tx_fee_button(&self) -> Result<Vec<InlineKeyboardButton>> {
         let id = self.job_id();
         let btn = InlineKeyboardButton::callback(
-            format!("Tx Fee {} SOL", self.tx_fee().round(6)),
+            format!("Tx Fee {}", self.tx_fee().round(6)),
             Callback::job(JobCommand::PriorityFeeRandom, id).format()?,
         );
         let reset = InlineKeyboardButton::callback(
@@ -223,7 +223,7 @@ impl PumpmanJob for Pumpman {
         let id = self.job_id();
         let amount = self.amount().round(3);
         let btn = InlineKeyboardButton::callback(
-            format!("Amount {} SOL", amount),
+            format!("Amount {}", amount),
             Callback::job(JobCommand::AmountRandom, id).format()?,
         );
         let reset = InlineKeyboardButton::callback(

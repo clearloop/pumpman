@@ -105,7 +105,10 @@ pub async fn alert(
     }
 
     // 1. filter out mc less than $8k
-    let coin = client.coin(&mint, false, redis).await?;
+    let Ok(coin) = client.coin(&mint, false, redis).await else {
+        redis.set(key, true)?;
+        return Ok(());
+    };
     if let Some(mc) = &coin.usd_market_cap {
         if *mc < BigDecimal::from(config.marketcap) {
             return Ok(());
@@ -139,6 +142,5 @@ pub async fn alert(
         .alert(bot, &config.subscription)
         .await?;
     redis.set(key, true)?;
-
     Ok(())
 }

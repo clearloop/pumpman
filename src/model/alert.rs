@@ -99,7 +99,7 @@ impl Display for Alert {
         );
 
         let count = if count == 19 {
-            "> 20".escaped()
+            ">20".escaped()
         } else {
             format!("{count}")
         };
@@ -107,17 +107,15 @@ impl Display for Alert {
         write!(
             f,
             r#"
-*{title}* \- [{name}](https://pump.fun/{mint}) \(${symbol}\)
+*{title}* \- [{name} \(${symbol}\)](https://pump.fun/{mint})
 
-\- dev wallet sold out: {soldout}
-\- market cap: ${mc}k
-\- holders count: {count}
-\- top 20 holders HODL: {percent}%
-\- listed on dex: {dex}
+\- dev wallet sold out: `{soldout}`
+\- market cap: `${mc}k`
+\- holders count: `{count}`
+\- top 20 holders HODL: `{percent}%`
+\- listed on dex: `{dex}`
 
-```copy
-{address}
-```
+CA: `{address}`
 "#,
         )
     }

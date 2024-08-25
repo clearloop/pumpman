@@ -78,6 +78,12 @@ impl Command {
             return Ok(());
         };
 
+        let mint = text.trim_start_matches("/start").trim();
+        let job = context.job(msg.chat.id.0, mint).await?;
+        bot.send_message(msg.chat.id, message::job(&context, &job).await?)
+            .parse_mode(ParseMode::Html)
+            .reply_markup(job.markup(&context.global)?)
+            .await?;
         Ok(())
     }
 

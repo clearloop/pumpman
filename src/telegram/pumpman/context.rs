@@ -240,6 +240,7 @@ impl PumpmanContext {
         let postgres = &mut self.context.postgres().await?;
         pumpmen::table
             .filter(pumpmen::owner.eq(tgid))
+            .filter(pumpmen::bumps.gt(1))
             .load(postgres)
             .await
             .map_err(Into::into)
