@@ -116,7 +116,7 @@ impl Takeover {
         tracing::info!("Starting takeover service ...");
         while let Some(mints) = rx.recv().await {
             if let Err(e) = self.soldout(&bot, mints).await {
-                tracing::warn!("Failed to process event, error: {e}");
+                tracing::error!("Failed to process event, error: {e}");
                 tokio::time::sleep(Duration::from_secs(5)).await;
             }
         }

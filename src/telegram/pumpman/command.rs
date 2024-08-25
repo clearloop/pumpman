@@ -13,7 +13,10 @@ use teloxide::{
     payloads::SendMessageSetters,
     prelude::Message,
     requests::Requester,
-    types::{InlineKeyboardButton, ParseMode, ReplyMarkup},
+    types::{
+        InlineKeyboardButton, MediaKind, MediaText, MessageCommon, MessageKind, ParseMode,
+        ReplyMarkup,
+    },
     utils::command::BotCommands,
     Bot,
 };
@@ -61,11 +64,20 @@ impl Command {
         context: PumpmanContext,
         msg: Message,
     ) -> Result<()> {
-        bot.send_message(msg.chat.id, message::menu(&context, msg.chat.id.0).await?)
-            .parse_mode(ParseMode::Html)
-            .await?;
-
         dialogue.update(State::Start).await?;
+        let MessageKind::Common(MessageCommon {
+            media_kind: MediaKind::Text(MediaText { text, .. }),
+            ..
+        }) = msg.kind
+        else {
+            // handle common start
+            bot.send_message(msg.chat.id, message::menu(&context, msg.chat.id.0).await?)
+                .parse_mode(ParseMode::Html)
+                .await?;
+
+            return Ok(());
+        };
+
         Ok(())
     }
 

@@ -14,9 +14,7 @@ use solana_sdk::{native_token::LAMPORTS_PER_SOL, pubkey::Pubkey, signer::Signer}
 use teloxide::types::{InlineKeyboardButton, InlineKeyboardMarkup};
 
 /// message while entring group
-pub const ENTER_GROUP: &str = r#"
-Only support private chats atm ))
-"#;
+pub const ENTER_GROUP: &str = r#"Only support private chats atm ))"#;
 
 /// Send menu message
 pub async fn wallet(pubkey: &Pubkey) -> Result<String> {

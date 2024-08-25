@@ -115,12 +115,17 @@ pub trait PumpApi: HttpClient + SolRpcApi {
 
     /// get coin of pump fun
     async fn coin(&self, mint: &str, update: bool, con: &mut Connection) -> Result<Coin> {
-        self.cget(&format!("{PUMPFUN}/coins/{mint}"), update, FIVE_MINS, con)
+        match self
+            .cget(&format!("{PUMPFUN}/coins/{mint}"), update, FIVE_MINS, con)
             .await
-            .map_err(|e| {
-                tracing::error!("Failed to get pump coin {mint}: {e}");
-                e
-            })
+        {
+            Err(e) => {
+                tracing::warn!("Failed to get pump coin {mint}: {e}");
+                con.set(Cache::DevSoldOut(&mint), true)?;
+                Err(e)
+            }
+            Ok(c) => Ok(c),
+        }
     }
 
     /// Check if account is soldout
