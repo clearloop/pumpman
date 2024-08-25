@@ -154,7 +154,7 @@ pub async fn list_markup(
 ) -> Result<InlineKeyboardMarkup> {
     let redis = &mut context.redis()?;
     let mut kbs = Vec::new();
-    for job in jobs.into_iter() {
+    for job in jobs {
         let coin = context.client.coin(&job.mint, false, redis).await?;
         let job_id = job.id();
         let mut commands = vec![InlineKeyboardButton::callback(
