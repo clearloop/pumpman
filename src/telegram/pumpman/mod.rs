@@ -25,8 +25,6 @@ pub(crate) type BotDialogue = Dialogue<State, ErasedStorage<State>>;
 
 /// Start the pumpman bot
 pub async fn start(bot: &Bot, context: PumpmanContext, redis: String) -> anyhow::Result<()> {
-    tracing::info!("Starting the pumpman bot ...");
-
     let command = teloxide::filter_command::<Command, _>()
         .branch(case![Command::Start].endpoint(Command::start))
         .branch(case![Command::Wallet].endpoint(Command::wallet))

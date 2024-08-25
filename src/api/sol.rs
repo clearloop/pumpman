@@ -81,7 +81,7 @@ pub trait SolRpcApi {
         let key = format!("sol::tokenacc::{mint}::{acc}");
         let accs = if update || !redis.exists(&key)? {
             let accs = self
-                .rpc()
+                .helius()
                 .get_token_accounts_by_owner(acc, TokenAccountsFilter::Mint(mint))
                 .await?;
 
@@ -135,14 +135,14 @@ pub trait SolRpcApi {
             &mpl_token_metadata::ID.to_bytes().into(),
         );
 
-        let data = self.rpc().get_account_data(&acc.0).await?;
+        let data = self.helius().get_account_data(&acc.0).await?;
         Metadata::from_bytes(&data).map_err(Into::into)
     }
 
     /// Get encoded solana transaction with meta
     async fn tx(&self, sig: &str) -> Result<EncodedConfirmedTransactionWithStatusMeta> {
         let sig = Signature::from_str(sig)?;
-        self.rpc()
+        self.helius()
             .get_transaction_with_config(
                 &sig,
                 RpcTransactionConfig {

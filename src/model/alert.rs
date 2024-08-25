@@ -11,7 +11,7 @@ use std::fmt::Display;
 use teloxide::{
     payloads::SendMessageSetters,
     requests::Requester,
-    types::{Message, ParseMode, Recipient},
+    types::{InlineKeyboardButton, InlineKeyboardMarkup, Message, ParseMode, Recipient},
     Bot,
 };
 
@@ -61,8 +61,12 @@ impl Alert {
             self.to_string(),
         )
         .parse_mode(ParseMode::MarkdownV2)
-        // .reply_markup(value)
-        // .disable_web_page_preview(true)
+        .reply_markup(InlineKeyboardMarkup::new(vec![vec![
+            InlineKeyboardButton::url(
+                "Bump",
+                format!("https://t.me/pumpmaniobot?start={}", self.coin.mint).parse()?,
+            ),
+        ]]))
         .await
         .map_err(Into::into)
     }

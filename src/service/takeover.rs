@@ -42,7 +42,7 @@ impl Takeover {
     }
 
     /// Start the service
-    pub async fn start(mut config: Config, context: Context) -> Result<()> {
+    pub async fn start(mut config: Config, context: Context, ctrl_c: bool) -> Result<()> {
         let Some(mut takeover) = config.takeover.take() else {
             tracing::debug!("No config found for takeover service");
             return Ok(());
@@ -58,7 +58,7 @@ impl Takeover {
             let (tx, rx) = mpsc::channel::<Vec<String>>(50);
 
             let r = tokio::select! {
-                _ = signal::ctrl_c() => break Ok(()),
+                _ = signal::ctrl_c(), if ctrl_c => break Ok(()),
                 r = service.sub_pump(config.cluster.ws.as_ref(), tx) => r,
                 r = service.sub_alerts(&bot, rx) => r,
                 r = takeover::start(
@@ -70,7 +70,7 @@ impl Takeover {
 
             if let Err(e) = r {
                 tracing::error!("{e}");
-                tokio::time::sleep(Duration::from_secs(20)).await;
+                tokio::time::sleep(Duration::from_secs(10)).await;
             }
         }
     }
@@ -113,11 +113,10 @@ impl Takeover {
     /// Start the reporter service
     pub async fn sub_alerts(&self, bot: &str, mut rx: Receiver<Vec<String>>) -> Result<()> {
         let bot = Bot::new(bot);
-        tracing::trace!("Starting takeover service ...");
+        tracing::info!("Starting takeover service ...");
         while let Some(mints) = rx.recv().await {
-            tracing::trace!("Received mints: {mints:?}");
             if let Err(e) = self.soldout(&bot, mints).await {
-                tracing::warn!("Failed to process event, error: {e}");
+                tracing::error!("Failed to process event, error: {e}");
                 tokio::time::sleep(Duration::from_secs(5)).await;
             }
         }

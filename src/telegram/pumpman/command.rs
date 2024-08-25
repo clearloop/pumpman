@@ -13,7 +13,10 @@ use teloxide::{
     payloads::SendMessageSetters,
     prelude::Message,
     requests::Requester,
-    types::{InlineKeyboardButton, ParseMode, ReplyMarkup},
+    types::{
+        InlineKeyboardButton, MediaKind, MediaText, MessageCommon, MessageKind, ParseMode,
+        ReplyMarkup,
+    },
     utils::command::BotCommands,
     Bot,
 };
@@ -61,11 +64,26 @@ impl Command {
         context: PumpmanContext,
         msg: Message,
     ) -> Result<()> {
-        bot.send_message(msg.chat.id, message::menu(&context, msg.chat.id.0).await?)
-            .parse_mode(ParseMode::Html)
-            .await?;
-
         dialogue.update(State::Start).await?;
+        let MessageKind::Common(MessageCommon {
+            media_kind: MediaKind::Text(MediaText { text, .. }),
+            ..
+        }) = msg.kind
+        else {
+            // handle common start
+            bot.send_message(msg.chat.id, message::menu(&context, msg.chat.id.0).await?)
+                .parse_mode(ParseMode::Html)
+                .await?;
+
+            return Ok(());
+        };
+
+        let mint = text.trim_start_matches("/start").trim();
+        let job = context.job(msg.chat.id.0, mint).await?;
+        bot.send_message(msg.chat.id, message::job(&context, &job).await?)
+            .parse_mode(ParseMode::Html)
+            .reply_markup(job.markup(&context.global)?)
+            .await?;
         Ok(())
     }
 
@@ -73,7 +91,7 @@ impl Command {
     pub async fn wallet(bot: Bot, context: PumpmanContext, msg: Message) -> Result<()> {
         let wallet = context.wallet(msg.chat.id.0).await?;
         let pubkey = wallet.pubkey();
-        let balance = (BigDecimal::from(context.client.rpc().get_balance(&pubkey).await?)
+        let balance = (BigDecimal::from(context.client.helius().get_balance(&pubkey).await?)
             / SOL_SCALE)
             .round(6);
 

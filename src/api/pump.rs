@@ -118,7 +118,7 @@ pub trait PumpApi: HttpClient + SolRpcApi {
         self.cget(&format!("{PUMPFUN}/coins/{mint}"), update, FIVE_MINS, con)
             .await
             .map_err(|e| {
-                tracing::error!("Failed to get pump coin {mint}: {e}");
+                tracing::warn!("Failed to get pump coin {mint}: {e}");
                 e
             })
     }
@@ -221,7 +221,7 @@ pub trait PumpApi: HttpClient + SolRpcApi {
 
     async fn priority_fee(&self) -> Result<u64> {
         let fees: Vec<RpcPrioritizationFee> = self
-            .rpc()
+            .helius()
             .get_recent_prioritization_fees(&[pump::ID])
             .await?
             .into_iter()

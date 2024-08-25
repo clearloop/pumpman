@@ -14,9 +14,7 @@ use solana_sdk::{native_token::LAMPORTS_PER_SOL, pubkey::Pubkey, signer::Signer}
 use teloxide::types::{InlineKeyboardButton, InlineKeyboardMarkup};
 
 /// message while entring group
-pub const ENTER_GROUP: &str = r#"
-Only support private chats atm ))
-"#;
+pub const ENTER_GROUP: &str = r#"Only support private chats atm ))"#;
 
 /// Send menu message
 pub async fn wallet(pubkey: &Pubkey) -> Result<String> {
@@ -111,24 +109,27 @@ pub async fn job(context: &PumpmanContext, job: &Pumpman) -> Result<String> {
 
     let fee_basis_points = context.fee_basis_points().await?;
     let fee = job.fee(&context.global, fee_basis_points);
+    let bumps = 10 * 60 / job.speed;
+    let fee10: BigDecimal = &fee * bumps;
 
     Ok(format!(
         r#"
 Job <a href="https://pump.fun/{}">{} (${})</a>
 
-Your Wallet Address: <code>{pubkey}</code> ( <code>{} SOL</code> )
+Your Wallet Address: <code>{pubkey}</code>
 
 * <b>Reserved balance</b> for bump amount: <code>{} SOL</code>
 * <b>Free balance</b> for /fees: <code>{} SOL</code> which can bump ${} for around <code>{}</code>.
+  * <code>{bumps} bumps</code> in <b>10 mins</b> with current config: <code>{} SOL</code>
 "#,
         coin.mint,
         coin.name,
         coin.symbol,
-        sol.round(6),
         sol.round(6).min((job.amount).round(6)),
         (sol - &job.amount).max(BigDecimal::zero()).round(6),
         coin.symbol,
-        job.duration(&fee, balance)
+        job.duration(&fee, balance),
+        fee10.round(6),
     ))
 }
 
@@ -141,6 +142,8 @@ pub fn list(jobs: &[Pumpman]) -> String {
 You currently have <code>{total}</code> jobs in total, <code>{active}</code> of them are active.
 
 Tap job names to enter their dashboards. You can safely <code>delete</code> inactive jobs. Allocated balance will automatically return to your /wallet upon deletion.
+
+NOTE: Only jobs have processed bumps will be listed here.
 "#
     )
 }

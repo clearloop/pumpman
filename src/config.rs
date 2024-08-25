@@ -5,7 +5,7 @@ use std::{fs, path::Path};
 use url::Url;
 
 /// Replika service config
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct Config {
     /// RPC endpoint of solana
     pub cluster: Cluster,
@@ -28,7 +28,7 @@ impl Config {
 }
 
 /// Solana cluster
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct Cluster {
     /// Helius API for advanced usages
     pub helius: Url,
