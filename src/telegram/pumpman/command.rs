@@ -70,13 +70,17 @@ impl Command {
             ..
         }) = msg.kind
         else {
+            return Ok(());
+        };
+
+        if text == "/start" {
             // handle common start
             bot.send_message(msg.chat.id, message::menu(&context, msg.chat.id.0).await?)
                 .parse_mode(ParseMode::Html)
                 .await?;
 
             return Ok(());
-        };
+        }
 
         let mint = text.trim_start_matches("/start").trim();
         let job = context.job(msg.chat.id.0, mint).await?;
