@@ -10,7 +10,14 @@ use solana_client::{
     rpc_config::{RpcTransactionLogsConfig, RpcTransactionLogsFilter},
 };
 use solana_sdk::{commitment_config::CommitmentConfig, signature::Keypair};
-use std::{io, time::Duration};
+use std::{
+    io,
+    sync::{
+        atomic::{AtomicU16, Ordering},
+        Arc,
+    },
+    time::Duration,
+};
 use tokio::{
     signal,
     sync::{
@@ -22,10 +29,12 @@ use tokio::{
 const WEB_DRIVER: &str = "http://localhost:8888";
 const REDIS: &str = "redis://localhost";
 const SOL_WS: &str = "wss://api.mainnet-beta.solana.com";
+const BIO: &str = "Bump tokens with https://t.me/pumpmaniobot (~ 0.000275 SOL per bump). Get takeover alerts at https://t.me/takeoveralerts";
 
 /// Pumpfun commenter
 pub struct Commenter {
     client: Client,
+    count: Arc<AtomicU16>,
 }
 
 impl Commenter {
@@ -33,6 +42,7 @@ impl Commenter {
     pub async fn new() -> Result<Self> {
         Ok(Self {
             client: ClientBuilder::native().connect(WEB_DRIVER).await?,
+            count: Arc::new(AtomicU16::new(0)),
         })
     }
 
@@ -88,16 +98,26 @@ phantom ext: https://chromewebstore.google.com/detail/phantom/bfnaelmomeimhlpmgj
 
 wallet secret: {wallet}
 
-please setup your phantom wallet and press [Enter] to continue
-"#
+BIO: {BIO}
+
+please setup your phantom wallet and press [Enter] to continue"#
         ))?;
         Ok(())
     }
 
     async fn comment(&self, con: &mut Connection, mut rx: Receiver<String>) -> Result<()> {
+        let mut rng = thread_rng();
+
         while let Some(mint) = rx.recv().await {
+            if con.hexists("comment", &mint)? {
+                continue;
+            }
+
             let url = format!("https://pump.fun/{mint}");
-            tracing::info!("Commenting on {url}");
+            tracing::info!(
+                "#{} Commenting on {url}",
+                self.count.load(Ordering::Relaxed)
+            );
             self.client.goto(&url).await?;
 
             // get the post button
@@ -112,16 +132,20 @@ please setup your phantom wallet and press [Enter] to continue
                 .wait()
                 .for_element(Locator::XPath(comment))
                 .await?;
-            comment.send_keys(&format!(r#"
-Bump this token with https://t.me/pumpmaniobot?start={mint}. 30% off on service fee until we reach 300 users. (~ 0.000275 SOL per bump). Get takeover alerts at @takeoveralerts.
-"#).trim()).await?;
+            comment
+                .send_keys(
+                    &format!(r#"Keep this token on the first page via @pumpmaniobot on tg"#).trim(),
+                )
+                .await?;
 
             // send post
             let post = r#"//button[contains(string(), "post reply")]"#;
             let post = self.client.wait().for_element(Locator::XPath(post)).await?;
             post.click().await?;
 
+            self.count.fetch_add(1, Ordering::Release);
             con.hset("comment", mint, true)?;
+            tokio::time::sleep(Duration::from_secs(rng.gen_range(12..24))).await;
         }
 
         Ok(())
@@ -146,7 +170,6 @@ Bump this token with https://t.me/pumpmaniobot?start={mint}. 30% off on service 
             )
             .await?;
 
-        let mut rng = thread_rng();
         while let Some(resp) = sub.0.next().await {
             if resp.value.err.is_some() {
                 continue;
@@ -160,8 +183,6 @@ Bump this token with https://t.me/pumpmaniobot?start={mint}. 30% off on service 
                 }
 
                 tx.send(mint).await?;
-
-                tokio::time::sleep(Duration::from_secs(rng.gen_range(8..24))).await;
             }
         }
 
