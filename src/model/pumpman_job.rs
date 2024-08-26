@@ -110,7 +110,7 @@ pub trait PumpmanJob {
             JobCommand::BatchReset => *self.batch_mut() = 1,
             JobCommand::PriorityFeeDown => {
                 *self.priority_fee_mut() =
-                    (self.priority_fee() - &global.priority_fee_step).min(BigDecimal::zero())
+                    (self.priority_fee() - &global.priority_fee_step).max(BigDecimal::zero())
             }
             JobCommand::PriorityFeeUp => *self.priority_fee_mut() += &global.priority_fee_step,
             JobCommand::PriorityFeeRandom => {
