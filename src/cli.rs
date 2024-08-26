@@ -99,6 +99,8 @@ pub enum Command {
     Balance { address: String },
     /// Import wallet to database
     Import { tgid: i64, wallet: PathBuf },
+    /// Run the commenter
+    Comment,
     /// Init database
     Init,
 }
@@ -314,6 +316,9 @@ impl Command {
                     (BigDecimal::from(receiver.lamports) / LAMPORTS_PER_SOL).round(6)
                 );
                 println!("Fee {fee} ({} SOL)", BigDecimal::from(fee) / SOL_SCALE);
+            }
+            Command::Comment => {
+                service::Commenter::start().await?;
             }
         }
 
