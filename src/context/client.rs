@@ -28,6 +28,14 @@ impl Client {
             helius: Arc::new(RpcClient::new(cluster.helius.to_string())),
         })
     }
+
+    pub fn http() -> Self {
+        Self {
+            http: Arc::new(reqwest::Client::new()),
+            rpc: Arc::new(RpcClient::new("https://api.mainnet-beta.solana.com".into())),
+            helius: Arc::new(RpcClient::new("https://api.mainnet-beta.solana.com".into())),
+        }
+    }
 }
 
 impl SolRpcApi for Client {

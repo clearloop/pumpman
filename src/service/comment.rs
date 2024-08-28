@@ -1,5 +1,10 @@
 //! Comment service
-use crate::{sol, sol::pump};
+use crate::{
+    api::PumpApi,
+    config::PumpmanProfile,
+    context::Client as CClient,
+    sol::{self, pump},
+};
 use anyhow::Result;
 use fantoccini::{Client, ClientBuilder, Locator};
 use futures::StreamExt;
@@ -47,11 +52,10 @@ impl Commenter {
     }
 
     pub async fn start() -> Result<()> {
-        let cmt = Self::new().await?;
-        cmt.setup().await?;
-        tracing::info!("Start commenting ...");
-
         let redis = Redis::open(REDIS)?;
+        let cmt = Self::new().await?;
+        cmt.setup(&mut redis.get_connection()?).await?;
+        tracing::info!("Start commenting ...");
 
         loop {
             let (tx, rx) = mpsc::channel::<String>(50);
@@ -69,7 +73,7 @@ impl Commenter {
     }
 
     /// Set up pumpfun cookies
-    async fn setup(&self) -> Result<()> {
+    async fn setup(&self, con: &mut Connection) -> Result<()> {
         self.client.goto("https://pump.fun").await?;
 
         // close the popup
@@ -91,7 +95,16 @@ impl Commenter {
         reject.click().await?;
 
         // waiting for setup
-        let wallet = bs58::encode(Keypair::new().to_bytes()).into_string();
+        let pair = Keypair::new();
+        let wallet = bs58::encode(pair.to_bytes()).into_string();
+        let client = CClient::http();
+
+        client.users(&PumpmanProfile {
+            username: None,
+            bio: BIO.into(),
+            profile_image: "https://pump.mypinata.cloud/ipfs/Qmf8myT22Ru6nHzRaRzkBBpYUFL1zTgk7nhiRLL4SN6rZX".into()
+        }, &pair, con).await?;
+
         self.pause(&format!(
             r#"
 phantom ext: https://chromewebstore.google.com/detail/phantom/bfnaelmomeimhlpmgjnjophhpkkoljpa?hl=ja
@@ -133,9 +146,7 @@ please setup your phantom wallet and press [Enter] to continue"#
                 .for_element(Locator::XPath(comment))
                 .await?;
             comment
-                .send_keys(
-                    &format!(r#"Keep this token on the first page via @pumpmaniobot on tg"#).trim(),
-                )
+                .send_keys(&format!(r#"join takeover alerts https://t.me/takeoveralerts"#).trim())
                 .await?;
 
             // send post
