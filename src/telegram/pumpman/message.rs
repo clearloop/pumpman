@@ -31,8 +31,6 @@ pub async fn menu(context: &PumpmanContext, user: i64) -> Result<String> {
         r#"
 The easiest way to keep your token staying on the first page of PumpFun!
 
-<b>🎁 30% off on service fee till we reach 300 users!</b>
-
 /fees of bumping a token for 10 mins with /config: <code>{} SOL</code>
 
 Please paste a pumpfun link in the chat, for example: <code>https://pump.fun/2GncVSSwhxsJu4B5wGt14jRoG2iGCCFzQk6D9Lmspump</code>

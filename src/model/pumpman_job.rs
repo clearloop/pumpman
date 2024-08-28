@@ -1,5 +1,5 @@
 use crate::{
-    config,
+    config, emoji,
     model::{pumpman::Speed, Pumpman, PumpmanGlobal},
     sol::{pump::PUMP_FEE_BASIS, utils::LAMPORTS_PER_SIGNATURE},
     telegram::{
@@ -182,12 +182,12 @@ impl PumpmanJob for Pumpman {
         let id = self.job_id();
         Ok(if self.active() {
             vec![InlineKeyboardButton::callback(
-                "Stop",
+                format!("Stop {}", emoji::STOP),
                 Callback::job(JobCommand::Stop, id).format()?,
             )]
         } else {
             vec![InlineKeyboardButton::callback(
-                "Start",
+                format!("Start {}", emoji::ROCKET),
                 Callback::job(JobCommand::Start, id).format()?,
             )]
         })
@@ -197,11 +197,11 @@ impl PumpmanJob for Pumpman {
         let id = self.job_id();
         let batch = self.batch();
         let btn = InlineKeyboardButton::callback(
-            format!("Batch {}", batch),
+            format!("{} Batch {}", emoji::RANDOM, batch),
             Callback::job(JobCommand::BatchRandom, id).format()?,
         );
         let reset = InlineKeyboardButton::callback(
-            "Reset",
+            format!("Reset {}", emoji::RESET),
             Callback::job(JobCommand::BatchReset, id).format()?,
         );
 
@@ -211,11 +211,11 @@ impl PumpmanJob for Pumpman {
     fn tx_fee_button(&self) -> Result<Vec<InlineKeyboardButton>> {
         let id = self.job_id();
         let btn = InlineKeyboardButton::callback(
-            format!("Tx Fee {}", self.tx_fee().round(6)),
+            format!("{} Tx Fee {}", emoji::RANDOM, self.tx_fee().round(6)),
             Callback::job(JobCommand::PriorityFeeRandom, id).format()?,
         );
         let reset = InlineKeyboardButton::callback(
-            "Reset",
+            format!("Reset {}", emoji::RESET),
             Callback::job(JobCommand::PriorityFeeReset, id).format()?,
         );
 
@@ -226,11 +226,11 @@ impl PumpmanJob for Pumpman {
         let id = self.job_id();
         let amount = self.amount().round(3);
         let btn = InlineKeyboardButton::callback(
-            format!("Amount {}", amount),
+            format!("{} Amount {}", emoji::RANDOM, amount),
             Callback::job(JobCommand::AmountRandom, id).format()?,
         );
         let reset = InlineKeyboardButton::callback(
-            "Reset",
+            format!("Reset {}", emoji::RESET),
             Callback::job(JobCommand::AmountReset, id).format()?,
         );
 
