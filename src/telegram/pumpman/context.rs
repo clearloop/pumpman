@@ -217,9 +217,9 @@ impl PumpmanContext {
             Ok(job)
         } else {
             let job = self.pglobal(tgid).await?.generate(mint);
-            diesel::insert_into(pumpmen::table)
+            let job = diesel::insert_into(pumpmen::table)
                 .values(&job)
-                .execute(postgres)
+                .get_result(postgres)
                 .await?;
 
             Ok(job)

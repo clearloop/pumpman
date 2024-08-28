@@ -7,6 +7,7 @@ pub mod api;
 mod cli;
 pub mod config;
 pub mod context;
+pub mod emoji;
 mod model;
 mod schema;
 pub mod service;

@@ -171,6 +171,7 @@ impl JobCommand {
         msg: &Message,
         job_id: i64,
     ) -> Result<()> {
+        tracing::trace!("handling job: {job_id}");
         let mut job = context.job_by_id(job_id).await?;
         job.apply_command(self, &context.global);
 
@@ -189,6 +190,7 @@ impl JobCommand {
         context: PumpmanContext,
         msg: Message,
     ) -> Result<()> {
+        tracing::trace!("handle global {}", msg.chat.id.0);
         let mut global = context.pglobal(msg.chat.id.0).await?;
         global.apply_command(self, &context.global);
 
