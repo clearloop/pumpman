@@ -1,4 +1,4 @@
-//! Replika services
+//! Pumpman services
 
 mod comment;
 pub mod pumpman;

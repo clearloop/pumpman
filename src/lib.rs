@@ -1,4 +1,4 @@
-//! Replika service
+//! Pumpman service
 #![allow(async_fn_in_trait)]
 
 pub use {cli::Opt, config::Config, context::Context};

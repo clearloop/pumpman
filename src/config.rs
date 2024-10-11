@@ -4,16 +4,16 @@ use serde::{Deserialize, Serialize};
 use std::{fs, path::Path};
 use url::Url;
 
-/// Replika service config
+/// Pumpman service config
 #[derive(Serialize, Deserialize, Clone)]
 pub struct Config {
     /// RPC endpoint of solana
     pub cluster: Cluster,
     /// Database uri
     pub database: Database,
-    /// Replika takeover service
+    /// Pumpman takeover service
     pub takeover: Option<Takeover>,
-    /// Replika pumpman service
+    /// Pumpman pumpman service
     pub pumpman: Option<Pumpman>,
 }
 

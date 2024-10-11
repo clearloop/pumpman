@@ -31,13 +31,13 @@ use solana_sdk::{
 };
 use std::{fs, path::PathBuf, str::FromStr};
 
-/// Replika command line interfaces
+/// Pumpman command line interfaces
 #[derive(Parser)]
 pub struct Opt {
-    /// Path of replika config
+    /// Path of pumpman config
     #[clap(short, long, default_value = "config.toml")]
     config: PathBuf,
-    /// Replika sub commands
+    /// Pumpman sub commands
     #[clap(subcommand)]
     command: Command,
     /// If update cache

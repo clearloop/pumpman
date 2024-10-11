@@ -8,7 +8,7 @@ use anyhow::Result;
 use solana_client::nonblocking::rpc_client::RpcClient;
 use std::sync::Arc;
 
-/// Replika client
+/// Pumpman client
 #[derive(Clone)]
 pub struct Client {
     /// Http client

@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use solana_sdk::signature::Keypair;
 use time::{Date, OffsetDateTime};
 
-/// Replika users
+/// Pumpman users
 #[derive(
     Insertable,
     Queryable,

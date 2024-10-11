@@ -3764,6 +3764,48 @@ dependencies = [
 ]
 
 [[package]]
+name = "pumpman"
+version = "0.0.1"
+dependencies = [
+ "actix-web",
+ "anchor-lang",
+ "anyhow",
+ "async-graphql",
+ "async-lock",
+ "base64 0.22.1",
+ "bigdecimal",
+ "bincode",
+ "bitcode",
+ "borsh 0.10.3",
+ "bs58 0.5.1",
+ "clap 4.5.15",
+ "diesel",
+ "diesel-async",
+ "fantoccini",
+ "futures",
+ "futures-util",
+ "mpl-token-metadata",
+ "rand 0.8.5",
+ "redis 0.25.4",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "solana-account-decoder",
+ "solana-client",
+ "solana-sdk",
+ "solana-transaction-status",
+ "spl-associated-token-account",
+ "teloxide",
+ "thiserror",
+ "time",
+ "tokio",
+ "toml 0.8.19",
+ "tracing",
+ "tracing-subscriber",
+ "url",
+]
+
+[[package]]
 name = "qstring"
 version = "0.7.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4065,48 +4107,6 @@ name = "regex-syntax"
 version = "0.8.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7a66a03ae7c801facd77a29370b4faec201768915ac14a721ba36f20bc9c209b"
-
-[[package]]
-name = "replika"
-version = "0.0.3"
-dependencies = [
- "actix-web",
- "anchor-lang",
- "anyhow",
- "async-graphql",
- "async-lock",
- "base64 0.22.1",
- "bigdecimal",
- "bincode",
- "bitcode",
- "borsh 0.10.3",
- "bs58 0.5.1",
- "clap 4.5.15",
- "diesel",
- "diesel-async",
- "fantoccini",
- "futures",
- "futures-util",
- "mpl-token-metadata",
- "rand 0.8.5",
- "redis 0.25.4",
- "reqwest",
- "serde",
- "serde_json",
- "solana-account-decoder",
- "solana-client",
- "solana-sdk",
- "solana-transaction-status",
- "spl-associated-token-account",
- "teloxide",
- "thiserror",
- "time",
- "tokio",
- "toml 0.8.19",
- "tracing",
- "tracing-subscriber",
- "url",
-]
 
 [[package]]
 name = "reqwest"
