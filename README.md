@@ -1,5 +1,5 @@
 ``` sh
-docker build -t clearloop/spr . --platform=linux/amd64
+docker build -t pumpman . --platform=linux/amd64
 ```
 
 ``` sh

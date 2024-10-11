@@ -15,9 +15,7 @@ use solana_sdk::{pubkey::Pubkey, signature::Keypair, signer::Signer};
 
 fn cluster() -> Cluster {
     Cluster {
-        helius: "https://mainnet.helius-rpc.com/?api-key=a4174161-7e9c-40ab-83ce-d7f288335380"
-            .parse()
-            .unwrap(),
+        helius: "https://api.mainnet-beta.solana.com".parse().unwrap(),
         http: "https://api.mainnet-beta.solana.com".parse().unwrap(),
         ws: "wss://api.mainnet-beta.solana.com".parse().unwrap(),
     }
@@ -73,11 +71,6 @@ fn bonding_curve_calc() -> Result<()> {
 async fn profile() -> Result<()> {
     let client = Client::new(&cluster())?;
     let redis = Redis::new(&"redis://localhost".parse()?)?;
-    // let pair = Keypair::from_bytes(&serde_json::from_slice::<Vec<u8>>(&fs::read(
-    //     PathBuf::from(
-    //         "/Users/clearloop/.config/solana/pm54gax6szHDoZ6x4PDV3pbCxvYioFgfR8xJxAemFgf.json",
-    //     ),
-    // )?)?)?;
 
     let pair = Keypair::new();
     let profile = PumpmanProfile {

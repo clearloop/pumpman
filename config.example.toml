@@ -1,0 +1,40 @@
+[cluster]
+helius = "https://api.mainnet-beta.solana.com" # helius RPC http entrypoint
+http = "https://api.mainnet-beta.solana.com"
+ws = "wss://api.mainnet-beta.solana.com"
+
+[database]
+redis = "redis://localhost"
+postgres = "postgres://localhost/takeover"
+
+[takeover]
+bot = "" # your bot token
+subscription = "" # your bot token
+registry = false
+coins = 15
+batch = 5
+marketcap = 15000
+holders = 15
+
+[pumpman]
+bot = "" # your bot token
+
+[pumpman.global]
+amount = 0.01
+amount_step = 0.005
+batch = 5
+slippage = 15
+priority_fee = 0.000005
+priority_fee_step = 0.00001
+speed = 7
+threshold = 0.15
+service_fee = 100
+treasury = "" # sol address for receving fees
+
+[pumpman.global.cache]
+bonding_curve = 30
+
+[pumpman.global.profile]
+# username = "pumpman"
+bio = "" # bio of user profile in pumpfun
+profile_image = "" # link of profile image

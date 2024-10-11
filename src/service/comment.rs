@@ -145,9 +145,10 @@ please setup your phantom wallet and press [Enter] to continue"#
                 .wait()
                 .for_element(Locator::XPath(comment))
                 .await?;
-            comment
-                .send_keys(&format!(r#"join takeover alerts https://t.me/takeoveralerts"#).trim())
-                .await?;
+
+            let n: usize = rng.gen_range(0..3);
+            let ads = vec![format!("<my ads>")];
+            comment.send_keys(&ads[n]).await?;
 
             // send post
             let post = r#"//button[contains(string(), "post reply")]"#;
